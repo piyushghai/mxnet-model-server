@@ -54,6 +54,7 @@ def create_empty_manifest_file():
     # Teardown
     if os.path.exists(path):
         os.remove(path)
+        shutil.rmtree('{}/'.format(model_dir_path))
 
 
 @pytest.mark.usefixtures('create_empty_manifest_file')
@@ -70,7 +71,7 @@ def test_parameter_file_defined_in_manifest():
     with pytest.raises(Exception) as error:
         ModelLoader.load(model_dir_path, handler_file)
 
-    assert error.value.message == 'parameterFile not defined in MANIFEST.json.'
+    assert error.value.args[0] == 'parameterFile not defined in MANIFEST.json.'
 
 
 @pytest.mark.usefixture('create_empty_manifest_file')
@@ -81,7 +82,7 @@ def test_parameter_file_exists():
     with pytest.raises(Exception) as error:
         ModelLoader.load(model_dir_path, handler_file)
 
-    assert error.value.message == 'parameterFile not found: {}.'.format(manifest_valid_data['model']['parametersFile'])
+    assert error.value.args[0] == 'parameterFile not found: {}.'.format(manifest_valid_data['model']['parametersFile'])
 
 
 @pytest.mark.usefixture('create_empty_manifest_file')
@@ -94,7 +95,7 @@ def test_symbol_file_defined_in_manifest():
     with pytest.raises(Exception) as error:
         ModelLoader.load(model_dir_path, handler_file)
 
-    assert error.value.message == 'symbolFile not defined in MANIFEST.json.'
+    assert error.value.args[0] == 'symbolFile not defined in MANIFEST.json.'
 
 
 @pytest.mark.usefixture('create_empty_manifest_file')
@@ -107,7 +108,7 @@ def test_symbol_file_exists():
     with pytest.raises(Exception) as error:
         ModelLoader.load(model_dir_path, handler_file)
 
-    assert error.value.message == 'symbolFile not found: {}.'.format(manifest_valid_data['model']['symbolFile'])
+    assert error.value.args[0] == 'symbolFile not found: {}.'.format(manifest_valid_data['model']['symbolFile'])
 
 
 @pytest.mark.usefixture('create_empty_manifest_file')
@@ -121,7 +122,7 @@ def test_handler_is_none():
     with pytest.raises(Exception) as error:
         ModelLoader.load(model_dir_path, None)
 
-    assert error.value.message == 'No handler is provided.'
+    assert error.value.args[0] == 'No handler is provided.'
 
 
 @pytest.mark.usefixture('create_empty_manifest_file')
@@ -137,7 +138,7 @@ def test_handler_file_not_exists():
     with pytest.raises(Exception) as error:
         ModelLoader.load(model_dir_path, handler_file)
 
-    assert error.value.message == 'handler file not not found: {}.'.format(handler_file_path)
+    assert error.value.args[0] == 'handler file not not found: {}.'.format(handler_file_path)
 
 
 @pytest.mark.usefixture('create_empty_manifest_file')
