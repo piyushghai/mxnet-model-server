@@ -18,14 +18,25 @@ from mms.model_loader import ModelLoader
 model_dir_path = 'my-model'
 handler_file = 'handler'
 
-manifest_invalid_data_missing_paramsFile = {"model": {"parametersFile": {}}, "engine": {"engineName": "MxNet"}}
-manifest_invalid_data_missing_symbolFile = {"model": {"parametersFile": "my-model/params1", "symbolFile": {}},
+manifest_invalid_data_missing_paramsFile = {"model": {}, "engine": {"engineName": "MxNet"}}
+manifest_invalid_data_missing_symbolFile = {"model": {"parametersFile": "my-model/params1"},
                                             "engine": {"engineName": "MxNet"}}
 manifest_valid_data = {"model": {"parametersFile": "my-model/params1", "symbolFile": 'my-model/symbol.json'},
                        "engine": {"engineName": "MxNet"}}
 
 
-@pytest.fixture()
+def empty_file(filepath):
+
+    """
+    Utility function for creating an empty file, which will be used throughout these unit tests
+    :param filepath:
+    :return:
+    """
+
+    open(filepath, 'a').close()
+
+
+@pytest.fixture(scope='session')
 def create_empty_manifest_file():
     """
     By setting the scope of create_empty_manifest_file as session we are ensuring that this piece of code runs once for all of the tests combined in this file
@@ -36,7 +47,7 @@ def create_empty_manifest_file():
         shutil.rmtree(path)
     os.mkdir(path)
     path = '{}/'.format(path) + MANIFEST_FILENAME
-    open(path, 'a').close()
+    empty_file(path)
 
     yield path
 
@@ -78,7 +89,7 @@ def test_symbol_file_defined_in_manifest():
     with open(model_dir_path + '/' + MANIFEST_FILENAME, 'w') as f:
         json.dump(manifest_invalid_data_missing_symbolFile, f)
 
-    open(manifest_invalid_data_missing_symbolFile['model']['parametersFile'], 'a').close()
+    empty_file(manifest_valid_data['model']['parametersFile'])
 
     with pytest.raises(Exception) as error:
         ModelLoader.load(model_dir_path, handler_file)
@@ -91,7 +102,7 @@ def test_symbol_file_exists():
     with open(model_dir_path + '/' + MANIFEST_FILENAME, 'w') as f:
         json.dump(manifest_valid_data, f)
 
-    open(manifest_invalid_data_missing_symbolFile['model']['parametersFile'], 'a').close()
+    empty_file(manifest_valid_data['model']['parametersFile'])
 
     with pytest.raises(Exception) as error:
         ModelLoader.load(model_dir_path, handler_file)
@@ -104,8 +115,8 @@ def test_handler_is_none():
     with open(model_dir_path + '/' + MANIFEST_FILENAME, 'w') as f:
         json.dump(manifest_valid_data, f)
 
-    open(manifest_valid_data['model']['parametersFile'], 'a').close()
-    open(manifest_valid_data['model']['symbolFile'], 'a').close()
+    empty_file(manifest_valid_data['model']['parametersFile'])
+    empty_file(manifest_valid_data['model']['symbolFile'])
 
     with pytest.raises(Exception) as error:
         ModelLoader.load(model_dir_path, None)
@@ -118,8 +129,8 @@ def test_handler_file_not_exists():
     with open(model_dir_path + '/' + MANIFEST_FILENAME, 'w') as f:
         json.dump(manifest_valid_data, f)
 
-    open(manifest_valid_data['model']['parametersFile'], 'a').close()
-    open(manifest_valid_data['model']['symbolFile'], 'a').close()
+    empty_file(manifest_valid_data['model']['parametersFile'])
+    empty_file(manifest_valid_data['model']['symbolFile'])
 
     handler_file_path = os.path.join(model_dir_path, handler_file)
 
@@ -134,10 +145,10 @@ def test_return_values_manifest_handler_file():
     with open(model_dir_path + '/' + MANIFEST_FILENAME, 'w') as f:
         json.dump(manifest_valid_data, f)
 
-    open(manifest_valid_data['model']['parametersFile'], 'a').close()
-    open(manifest_valid_data['model']['symbolFile'], 'a').close()
-    open(model_dir_path + '/' + handler_file, 'a').close()
+    empty_file(manifest_valid_data['model']['parametersFile'])
+    empty_file(manifest_valid_data['model']['symbolFile'])
+    empty_file(os.path.join(model_dir_path, handler_file))
 
     manifest_return, handler_file_return = ModelLoader.load(model_dir_path, handler_file)
     assert manifest_return == manifest_valid_data
-    assert handler_file_return == str(model_dir_path + '/' + handler_file)
+    assert str(handler_file_return) == str(os.path.join(model_dir_path, handler_file))
