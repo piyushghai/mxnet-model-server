@@ -10,6 +10,7 @@
 
 import pytest
 import os
+import shutil
 import json
 from mms.model_loader import MANIFEST_FILENAME
 from mms.model_loader import ModelLoader
@@ -26,10 +27,13 @@ manifest_valid_data = {"model": {"parametersFile": "my-model/params1", "symbolFi
 
 @pytest.fixture()
 def create_empty_manifest_file():
+    """
+    By setting the scope of create_empty_manifest_file as session we are ensuring that this piece of code runs once for all of the tests combined in this file
+    """
     # Setup
     path = '{}/'.format(model_dir_path)
     if os.path.exists(path):
-        os.rmdir(path)
+        shutil.rmtree(path)
     os.mkdir(path)
     path = '{}/'.format(path) + MANIFEST_FILENAME
     open(path, 'a').close()
