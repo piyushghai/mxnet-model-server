@@ -17,9 +17,6 @@ from mms.log import get_logger
 
 logger = get_logger()
 
-URL_PREFIX = ('http://', 'https://', 's3://')
-MANIFEST_DIR = "manifest_schema"
-MANIFEST_SCHEMA_FILE = 'manifest-schema.json'
 MANIFEST_FILENAME = 'MANIFEST.json'
 
 
