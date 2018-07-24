@@ -28,16 +28,11 @@ def patches(mocker):
         mocker.patch('os.makedirs'),
         mocker.patch('json.dump'),
         mocker.patch('subprocess.call'),
-        mocker.patch('builtins.open', mock_open()),
+        mocker.patch('__main__.open', mock_open()),
         mocker.patch('mms.client_sdk_generator.logger.info')
     )
     patches.path_exists.return_value = True
     patches.dirname.return_value = "testdirname"
-    patches.abspath.return_value = ""
-    patches.makedirs.return_value = ""
-    patches.json_dump.return_value = ""
-    patches.subprocess_call.return_value = ""
-    patches.logger_info.return_value = ""
     return patches
 
 def test_handles_exception(patches):
@@ -48,6 +43,7 @@ def test_handles_exception(patches):
     patches.json_dump.assert_not_called()
     patches.subprocess_call.assert_not_called()
     assert excinfo.value != test_exception
+    assert excinfo.value.args[0] == 'Failed to generate client sdk: test'
 
 def test_makes_build_directory(patches):
     patches.path_exists.return_value = False
