@@ -15,8 +15,8 @@ from mms.mxnet_model_service_error import MMSError
 from mms.utils.model_server_error_codes import ModelServerErrorCodes
 from mock import patch
 import json
+import socket
 
-model_service_worker = MXNetModelServiceWorker('my-socket')
 
 @pytest.fixture()
 def socket_patches(mocker):
@@ -34,6 +34,14 @@ def json_patches(mocker):
     Patches = namedtuple('Patches', ['json_load'])
     mock_patch = Patches(mocker.patch('json.loads'))
     return mock_patch
+
+
+@pytest.fixture()
+def model_service_worker(socket_patches):
+    model_service_worker = MXNetModelServiceWorker('my-socket')
+    model_service_worker.sock = socket_patches.socket
+
+    return model_service_worker
 
 
 def test_recv_msg_with_nil_pkt(socket_patches):
@@ -107,7 +115,7 @@ def test_rcv_msg_return_value(socket_patches, json_patches):
     assert data == recv_pkt
 
 
-def test_send_response_with_IO_Error(socket_patches):
+def test_send_response_with_IO_Error(socket_patches, model_service_worker):
     io_error = IOError("IO Error")
     socket_patches.socket.send.side_effect = io_error
     msg = 'hello socket'
@@ -128,7 +136,7 @@ def test_send_response_with_IO_Error(socket_patches):
     assert ex.value.args[0] == ModelServerErrorCodes.SEND_FAILS_EXCEEDS_LIMITS
 
 
-def test_send_response_with_OS_Error(socket_patches):
+def test_send_response_with_OS_Error(socket_patches, model_service_worker):
     os_error = OSError("OS Error")
     socket_patches.socket.send.side_effect = os_error
     msg = 'hello socket'
@@ -149,7 +157,7 @@ def test_send_response_with_OS_Error(socket_patches):
     assert ex.value.args[0] == ModelServerErrorCodes.SEND_FAILS_EXCEEDS_LIMITS
 
 
-def test_create_and_send_response(socket_patches):
+def test_create_and_send_response(socket_patches, model_service_worker):
     message = 'hello socket'
     code = 007
 
@@ -165,7 +173,7 @@ def test_create_and_send_response(socket_patches):
         spy.assert_called_with(socket_patches.socket, json.dumps(resp))
 
 
-def test_retrieve_model_input(socket_patches):
+def test_retrieve_model_input(socket_patches, model_service_worker):
     valid_inputs = [{'encoding': 'base64', 'value': 'val1', 'name': 'model_input_name'}]
 
     socket_patches.codec_helper.decode_msg.return_value = "some_decoded_msg"
@@ -181,7 +189,7 @@ def test_retrieve_model_input(socket_patches):
     assert expected_response[0] == model_in[0]
 
 
-def test_stop_server_with_nil_sock():
+def test_stop_server_with_nil_sock(model_service_worker):
     with pytest.raises(ValueError) as error:
         model_service_worker.stop_server(sock=None)
 
@@ -189,7 +197,7 @@ def test_stop_server_with_nil_sock():
     assert error.value.args[0] == "Invalid parameter passed to stop server connection"
 
 
-def test_stop_server_with_exception(socket_patches):
+def test_stop_server_with_exception(socket_patches, model_service_worker):
     close_exception = Exception("exception")
     socket_patches.socket.close.side_effect = close_exception
     log_call_param = "Error closing the socket {}. Msg: {}".format(socket_patches.socket, repr(close_exception))
@@ -200,8 +208,24 @@ def test_stop_server_with_exception(socket_patches):
     socket_patches.log_msg.assert_called_with(log_call_param)
 
 
-def test_stop_server(socket_patches):
+def test_stop_server(socket_patches, model_service_worker):
     with patch.object(model_service_worker, 'send_response', wraps=model_service_worker.send_response) as spy:
         model_service_worker.stop_server(socket_patches.socket)
         spy.assert_called()
         socket_patches.socket.close.assert_called()
+
+
+def test_run_server_with_socket_bind_error(socket_patches, model_service_worker):
+    bind_exception = socket.error("binding error")
+    socket_patches.socket.bind.side_effect = bind_exception
+
+    with pytest.raises(MMSError) as err:
+        model_service_worker.run_server()
+
+    socket_patches.socket.bind.assert_called()
+    socket_patches.socket.listen.assert_not_called()
+    assert err.value.get_code() == ModelServerErrorCodes.SOCKET_BIND_ERROR
+
+
+def test_run_server_with_OS_Error(socket_patches, model_service_worker):
+    pass
