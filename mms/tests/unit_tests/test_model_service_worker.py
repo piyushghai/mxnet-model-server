@@ -13,6 +13,8 @@ from collections import namedtuple
 from mms.model_service_worker import MXNetModelServiceWorker, MAX_FAILURE_THRESHOLD
 from mms.mxnet_model_service_error import MMSError
 from mms.utils.model_server_error_codes import ModelServerErrorCodes
+from mock import patch
+import json
 
 model_service_worker = MXNetModelServiceWorker('my-socket')
 
@@ -143,3 +145,19 @@ def test_send_response_with_OS_Error(socket_patches):
 
     # The exit status is exit(SEND_FAILS_EXCEEDS_LIMITS)
     assert ex.value.args[0] == ModelServerErrorCodes.SEND_FAILS_EXCEEDS_LIMITS
+
+
+def test_create_and_send_response(socket_patches):
+    message = 'hello socket'
+    code = 007
+
+    resp = {'code': code, 'message': message}
+
+    with patch.object(model_service_worker, 'send_response', wraps=model_service_worker.send_response) as spy:
+        model_service_worker.create_and_send_response(socket_patches.socket, code, message)
+        spy.assert_called_with(socket_patches.socket, json.dumps(resp))
+
+        preds = "some preds"
+        resp['predictions'] = preds
+        model_service_worker.create_and_send_response(socket_patches.socket, code, message, preds)
+        spy.assert_called_with(socket_patches.socket, json.dumps(resp))
