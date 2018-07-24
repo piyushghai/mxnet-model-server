@@ -28,7 +28,7 @@ def patches(mocker):
         mocker.patch('os.makedirs'),
         mocker.patch('json.dump'),
         mocker.patch('subprocess.call'),
-        mocker.patch('__main__.open', mock_open()),
+        mocker.patch('mms.client_sdk_generator.open', mock_open()),
         mocker.patch('mms.client_sdk_generator.logger.info')
     )
     patches.path_exists.return_value = True
