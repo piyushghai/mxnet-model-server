@@ -179,3 +179,29 @@ def test_retrieve_model_input(socket_patches):
 
     assert len(expected_response) == len(model_in)
     assert expected_response[0] == model_in[0]
+
+
+def test_stop_server_with_nil_sock():
+    with pytest.raises(ValueError) as error:
+        model_service_worker.stop_server(sock=None)
+
+    assert isinstance(error.value, ValueError)
+    assert error.value.args[0] == "Invalid parameter passed to stop server connection"
+
+
+def test_stop_server_with_exception(socket_patches):
+    close_exception = Exception("exception")
+    socket_patches.socket.close.side_effect = close_exception
+    log_call_param = "Error closing the socket {}. Msg: {}".format(socket_patches.socket, repr(close_exception))
+
+    model_service_worker.stop_server(sock=socket_patches.socket)
+
+    socket_patches.socket.close.assert_called()
+    socket_patches.log_msg.assert_called_with(log_call_param)
+
+
+def test_stop_server(socket_patches):
+    with patch.object(model_service_worker, 'send_response', wraps=model_service_worker.send_response) as spy:
+        model_service_worker.stop_server(socket_patches.socket)
+        spy.assert_called()
+        socket_patches.socket.close.assert_called()
