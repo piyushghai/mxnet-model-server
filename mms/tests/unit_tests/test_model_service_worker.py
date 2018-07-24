@@ -10,15 +10,16 @@
 
 import pytest
 from collections import namedtuple
-from mms.model_service_worker import MXNetModelServiceWorker
+from mms.model_service_worker import MXNetModelServiceWorker, MAX_FAILURE_THRESHOLD
 from mms.mxnet_model_service_error import MMSError
 from mms.utils.model_server_error_codes import ModelServerErrorCodes
 
+model_service_worker = MXNetModelServiceWorker('my-socket')
 
 @pytest.fixture()
 def socket_patches(mocker):
-    Patches = namedtuple('Patches', ['socket'])
-    mock_patch = Patches(mocker.patch('socket.socket'))
+    Patches = namedtuple('Patches', ['socket', 'log_msg'])
+    mock_patch = Patches(mocker.patch('socket.socket'), mocker.patch('mms.model_service_worker.log_msg'))
 
     mock_patch.socket.recv.return_value = "{}\r\n"
     return mock_patch
@@ -36,7 +37,7 @@ def test_recv_msg_with_nil_pkt(socket_patches):
     with pytest.raises(SystemExit) as ex:
         MXNetModelServiceWorker.recv_msg(socket_patches.socket)
 
-    assert ex.value.args[0] == 1 # The exit status is exit(1)
+    assert ex.value.args[0] == 1  # The exit status is exit(1)
 
 
 def test_rcv_msg_with_IO_Error(socket_patches):
@@ -102,3 +103,43 @@ def test_rcv_msg_return_value(socket_patches, json_patches):
     assert data == recv_pkt
 
 
+def test_send_response_with_IO_Error(socket_patches):
+    io_error = IOError("IO Error")
+    socket_patches.socket.send.side_effect = io_error
+    msg = 'hello socket'
+
+    log_call_param = "{}: Send failed. {}.\nMsg: {}".format(ModelServerErrorCodes.SEND_MSG_FAIL, repr(io_error), ''.join([msg, '\r\n']))
+
+    model_service_worker.send_failures = 0
+
+    with pytest.raises(SystemExit) as ex:
+        for i in range(1, MAX_FAILURE_THRESHOLD + 1):
+
+            model_service_worker.send_response(socket_patches.socket, msg)
+            socket_patches.socket.send.assert_called()
+            assert model_service_worker.send_failures == i
+            socket_patches.log_msg.assert_called_with(log_call_param)
+
+    # The exit status is exit(SEND_FAILS_EXCEEDS_LIMITS)
+    assert ex.value.args[0] == ModelServerErrorCodes.SEND_FAILS_EXCEEDS_LIMITS
+
+
+def test_send_response_with_OS_Error(socket_patches):
+    os_error = OSError("OS Error")
+    socket_patches.socket.send.side_effect = os_error
+    msg = 'hello socket'
+
+    log_call_param = "{}: Send failed. {}.\nMsg: {}".format(ModelServerErrorCodes.SEND_MSG_FAIL, repr(os_error), ''.join([msg, '\r\n']))
+
+    model_service_worker.send_failures = 0
+
+    with pytest.raises(SystemExit) as ex:
+        for i in range(1, MAX_FAILURE_THRESHOLD + 1):
+
+            model_service_worker.send_response(socket_patches.socket, msg)
+            socket_patches.socket.send.assert_called()
+            assert model_service_worker.send_failures == i
+            socket_patches.log_msg.assert_called_with(log_call_param)
+
+    # The exit status is exit(SEND_FAILS_EXCEEDS_LIMITS)
+    assert ex.value.args[0] == ModelServerErrorCodes.SEND_FAILS_EXCEEDS_LIMITS
