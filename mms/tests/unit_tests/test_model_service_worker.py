@@ -20,8 +20,10 @@ model_service_worker = MXNetModelServiceWorker('my-socket')
 
 @pytest.fixture()
 def socket_patches(mocker):
-    Patches = namedtuple('Patches', ['socket', 'log_msg'])
-    mock_patch = Patches(mocker.patch('socket.socket'), mocker.patch('mms.model_service_worker.log_msg'))
+    Patches = namedtuple('Patches', ['socket', 'log_msg', 'msg_validator', 'codec_helper'])
+    mock_patch = Patches(mocker.patch('socket.socket'), mocker.patch('mms.model_service_worker.log_msg'),
+                         mocker.patch('mms.model_service_worker.ModelWorkerMessageValidators'),
+                         mocker.patch('mms.model_service_worker.ModelWorkerCodecHelper'))
 
     mock_patch.socket.recv.return_value = "{}\r\n"
     return mock_patch
@@ -161,3 +163,19 @@ def test_create_and_send_response(socket_patches):
         resp['predictions'] = preds
         model_service_worker.create_and_send_response(socket_patches.socket, code, message, preds)
         spy.assert_called_with(socket_patches.socket, json.dumps(resp))
+
+
+def test_retrieve_model_input(socket_patches):
+    valid_inputs = [{'encoding': 'base64', 'value': 'val1', 'name': 'model_input_name'}]
+
+    socket_patches.codec_helper.decode_msg.return_value = "some_decoded_msg"
+
+    expected_response = ["some_decoded_msg"]
+
+    model_in = model_service_worker.retrieve_model_input(valid_inputs)
+
+    socket_patches.msg_validator.validate_predict_inputs.assert_called()
+    socket_patches.codec_helper.decode_msg.assert_called()
+
+    assert len(expected_response) == len(model_in)
+    assert expected_response[0] == model_in[0]
