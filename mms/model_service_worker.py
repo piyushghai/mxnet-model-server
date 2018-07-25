@@ -19,9 +19,11 @@ import socket
 import os
 import sys
 import json
+import base64
 from builtins import bytes
 from builtins import str
 
+from mms.model_loader import ModelLoader
 from mms.service_manager import ServiceManager
 from mms.log import log_msg, log_error
 from mms.utils.validators.validate_messages import ModelWorkerMessageValidators
@@ -104,7 +106,7 @@ class MXNetModelServiceWorker(object):
             for req in invalid_reqs.keys():
                 result.update({"requestId": req})
                 result.update({"code": invalid_reqs.get(req)})
-                result.update({"value": "Invalid input provided".encode(encoding)})
+                result.update({"value": ModelWorkerCodecHelper.encode_msg(encoding, "Invalid input provided".encode('utf-8'))})
                 result.update({"encoding": encoding})
 
             resp = [result]
@@ -253,7 +255,7 @@ class MXNetModelServiceWorker(object):
                 model_service.metrics_init(model_name, req_id_map)
                 retval.append(model_service.inference([input_batch[0][i] for i in input_batch[0]]))
                 # Dump metrics
-                emit_metrics(model_service.metrics.store)
+                emit_metrics(model_service.metrics_store.store)
 
             else:
                 raise MMSError(err.UNSUPPORTED_PREDICT_OPERATION, "Invalid batch size {}".format(batch_size))
@@ -282,7 +284,6 @@ class MXNetModelServiceWorker(object):
         :return:
         """
         try:
-            from mms.model_loader import ModelLoader
             ModelWorkerMessageValidators.validate_load_message(data)
             model_dir = data['modelPath']
             model_name = data['modelName']
