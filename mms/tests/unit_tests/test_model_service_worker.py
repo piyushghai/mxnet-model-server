@@ -53,20 +53,37 @@ def test_retrieve_model_input(socket_patches, model_service_worker):
     assert expected_response == model_in
 
 
-def test_create_and_send_response(socket_patches, model_service_worker):
+class TestCreateAndSendResponse():
     message = 'hello socket'
     code = 007
+    resp = {'code' : code, 'message' : message}
 
-    resp = {'code': code, 'message': message}
+    @pytest.fixture()
+    def get_send_response_spy(self, model_service_worker, mocker):
+        return mocker.patch.object(model_service_worker, 'send_response', wraps=model_service_worker.send_response)
 
-    with patch.object(model_service_worker, 'send_response', wraps=model_service_worker.send_response) as spy:
-        model_service_worker.create_and_send_response(socket_patches.socket, code, message)
-        spy.assert_called_with(socket_patches.socket, json.dumps(resp))
+    def test_with_preds(self, socket_patches, model_service_worker, get_send_response_spy):
+
+        model_service_worker.create_and_send_response(socket_patches.socket, self.code, self.message)
+        get_send_response_spy.assert_called_with(socket_patches.socket, json.dumps(self.resp))
 
         preds = "some preds"
-        resp['predictions'] = preds
-        model_service_worker.create_and_send_response(socket_patches.socket, code, message, preds)
-        spy.assert_called_with(socket_patches.socket, json.dumps(resp))
+        self.resp['predictions'] = preds
+        model_service_worker.create_and_send_response(socket_patches.socket, self.code, self.message, preds)
+        get_send_response_spy.assert_called_with(socket_patches.socket, json.dumps(self.resp))
+
+        del(self.resp['predictions'])
+
+    def test_with_exception(self, socket_patches, model_service_worker, get_send_response_spy):
+        message = 'hello socket'
+        code = 007
+        resp = {'code': code, 'message': message}
+
+        get_send_response_spy.side_effect = Exception('Some Exception')
+        with pytest.raises(Exception):
+            model_service_worker.create_and_send_response(socket_patches.socket, code, message)
+
+        socket_patches.log_error.assert_called()
 
 
 class TestRecvMsg():

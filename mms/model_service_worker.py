@@ -141,7 +141,7 @@ class MXNetModelServiceWorker(object):
             raise MMSError(err.RECEIVE_ERROR, "{}".format(sock_err.message))
         except ValueError as v:
             raise MMSError(err.INVALID_REQUEST, "JSON message format error: {}".format(v))
-        except MMSError as error:  # The error raise in #135 goes into the Exception block below and we lose the
+        except MMSError as error:  # The error raise in #138 goes into the Exception block below and we lose the
             raise error           # status code
         except Exception as e:  # pylint: disable=broad-except
             raise MMSError(err.UNKNOWN_EXCEPTION, "{}".format(e))
