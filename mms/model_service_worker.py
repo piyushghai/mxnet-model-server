@@ -140,7 +140,7 @@ class MXNetModelServiceWorker(object):
         except (IOError, OSError) as sock_err:
             raise MMSError(err.RECEIVE_ERROR, "{}".format(sock_err.message))
         except ValueError as v:
-            raise MMSError(err.INVALID_MESSAGE, "JSON message format error: {}".format(v))
+            raise MMSError(err.INVALID_REQUEST, "JSON message format error: {}".format(v))
         except MMSError as error:  # The error raise in #135 goes into the Exception block below and we lose the
             raise error           # status code
         except Exception as e:  # pylint: disable=broad-except
@@ -443,7 +443,7 @@ class MXNetModelServiceWorker(object):
             # socket fails, the backend worker will quit
 
             try:
-                log_msg("Waiting for a connections")
+                log_msg("Waiting for a connection")
 
                 (cl_socket, _) = self.sock.accept()
                 self.handle_connection(cl_socket)
