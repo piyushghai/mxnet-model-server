@@ -20,19 +20,13 @@ import socket
 
 @pytest.fixture()
 def socket_patches(mocker):
-    Patches = namedtuple('Patches', ['socket', 'log_msg', 'msg_validator', 'codec_helper'])
+    Patches = namedtuple('Patches', ['socket', 'log_msg', 'msg_validator', 'codec_helper', 'json_load'])
     mock_patch = Patches(mocker.patch('socket.socket'), mocker.patch('mms.model_service_worker.log_msg'),
                          mocker.patch('mms.model_service_worker.ModelWorkerMessageValidators'),
-                         mocker.patch('mms.model_service_worker.ModelWorkerCodecHelper'))
+                         mocker.patch('mms.model_service_worker.ModelWorkerCodecHelper'),
+                         mocker.patch('json.loads'))
 
     mock_patch.socket.recv.return_value = "{}\r\n"
-    return mock_patch
-
-
-@pytest.fixture()
-def json_patches(mocker):
-    Patches = namedtuple('Patches', ['json_load'])
-    mock_patch = Patches(mocker.patch('json.loads'))
     return mock_patch
 
 
@@ -42,135 +36,6 @@ def model_service_worker(socket_patches):
     model_service_worker.sock = socket_patches.socket
 
     return model_service_worker
-
-
-def test_recv_msg_with_nil_pkt(socket_patches):
-    socket_patches.socket.recv.return_value = None
-    with pytest.raises(SystemExit) as ex:
-        MXNetModelServiceWorker.recv_msg(socket_patches.socket)
-
-    assert ex.value.args[0] == 1  # The exit status is exit(1)
-
-
-def test_rcv_msg_with_IO_Error(socket_patches):
-    socket_patches.socket.recv.side_effect = IOError('IOError')
-
-    with pytest.raises(MMSError) as ex:
-        MXNetModelServiceWorker.recv_msg(socket_patches.socket)
-
-    assert ex.value.get_code() == ModelServerErrorCodes.RECEIVE_ERROR
-    assert ex.value.get_message() == "IOError"
-
-
-def test_rcv_msg_with_OSError(socket_patches):
-    socket_patches.socket.recv.side_effect = OSError('OSError')
-
-    with pytest.raises(MMSError) as ex:
-        MXNetModelServiceWorker.recv_msg(socket_patches.socket)
-
-    assert ex.value.get_code() == ModelServerErrorCodes.RECEIVE_ERROR
-    assert ex.value.get_message() == "OSError"
-
-
-def test_rcv_msg_with_Exception(socket_patches):
-    socket_patches.socket.recv.side_effect = Exception('Some Exception')
-
-    with pytest.raises(MMSError) as ex:
-        MXNetModelServiceWorker.recv_msg(socket_patches.socket)
-
-    assert ex.value.get_code() == ModelServerErrorCodes.UNKNOWN_EXCEPTION
-    assert ex.value.get_message() == "Some Exception"
-
-
-def test_rcv_msg_with_json_value_error(socket_patches, json_patches):
-    err_msg = "Some random json error"
-    json_patches.json_load.side_effect = ValueError(err_msg)
-
-    with pytest.raises(MMSError) as ex:
-        MXNetModelServiceWorker.recv_msg(socket_patches.socket)
-
-    assert ex.value.get_code() == ModelServerErrorCodes.INVALID_MESSAGE
-    assert ex.value.get_message() == "JSON message format error: {}".format(err_msg)
-
-
-def test_rcv_msg_with_missing_command(socket_patches, json_patches):
-    json_patches.json_load.return_value = {}
-
-    with pytest.raises(MMSError) as err:
-        MXNetModelServiceWorker.recv_msg(socket_patches.socket)
-
-    assert err.value.get_code() == ModelServerErrorCodes.INVALID_COMMAND
-    assert err.value.get_message() == "Invalid message received"
-
-
-def test_rcv_msg_return_value(socket_patches, json_patches):
-    recv_pkt = {'command': {'Some command'}}
-    json_patches.json_load.return_value = recv_pkt
-
-    cmd, data = MXNetModelServiceWorker.recv_msg(socket_patches.socket)
-
-    json_patches.json_load.assert_called()
-    assert 'command' in data.keys()
-    assert cmd == recv_pkt['command']
-    assert data == recv_pkt
-
-
-def test_send_response_with_IO_Error(socket_patches, model_service_worker):
-    io_error = IOError("IO Error")
-    socket_patches.socket.send.side_effect = io_error
-    msg = 'hello socket'
-
-    log_call_param = "{}: Send failed. {}.\nMsg: {}".format(ModelServerErrorCodes.SEND_MSG_FAIL, repr(io_error), ''.join([msg, '\r\n']))
-
-    model_service_worker.send_failures = 0
-
-    with pytest.raises(SystemExit) as ex:
-        for i in range(1, MAX_FAILURE_THRESHOLD + 1):
-
-            model_service_worker.send_response(socket_patches.socket, msg)
-            socket_patches.socket.send.assert_called()
-            assert model_service_worker.send_failures == i
-            socket_patches.log_msg.assert_called_with(log_call_param)
-
-    # The exit status is exit(SEND_FAILS_EXCEEDS_LIMITS)
-    assert ex.value.args[0] == ModelServerErrorCodes.SEND_FAILS_EXCEEDS_LIMITS
-
-
-def test_send_response_with_OS_Error(socket_patches, model_service_worker):
-    os_error = OSError("OS Error")
-    socket_patches.socket.send.side_effect = os_error
-    msg = 'hello socket'
-
-    log_call_param = "{}: Send failed. {}.\nMsg: {}".format(ModelServerErrorCodes.SEND_MSG_FAIL, repr(os_error), ''.join([msg, '\r\n']))
-
-    model_service_worker.send_failures = 0
-
-    with pytest.raises(SystemExit) as ex:
-        for i in range(1, MAX_FAILURE_THRESHOLD + 1):
-
-            model_service_worker.send_response(socket_patches.socket, msg)
-            socket_patches.socket.send.assert_called()
-            assert model_service_worker.send_failures == i
-            socket_patches.log_msg.assert_called_with(log_call_param)
-
-    # The exit status is exit(SEND_FAILS_EXCEEDS_LIMITS)
-    assert ex.value.args[0] == ModelServerErrorCodes.SEND_FAILS_EXCEEDS_LIMITS
-
-
-def test_create_and_send_response(socket_patches, model_service_worker):
-    message = 'hello socket'
-    code = 007
-
-    resp = {'code': code, 'message': message}
-
-    with patch.object(model_service_worker, 'send_response', wraps=model_service_worker.send_response) as spy:
-        model_service_worker.create_and_send_response(socket_patches.socket, code, message)
-        spy.assert_called_with(socket_patches.socket, json.dumps(resp))
-
-        preds = "some preds"
-        resp['predictions'] = preds
-        model_service_worker.create_and_send_response(socket_patches.socket, code, message, preds)
-        spy.assert_called_with(socket_patches.socket, json.dumps(resp))
 
 
 def test_retrieve_model_input(socket_patches, model_service_worker):
@@ -189,79 +54,198 @@ def test_retrieve_model_input(socket_patches, model_service_worker):
     assert expected_response[0] == model_in[0]
 
 
-def test_stop_server_with_nil_sock(model_service_worker):
-    with pytest.raises(ValueError) as error:
-        model_service_worker.stop_server(sock=None)
+def test_create_and_send_response(socket_patches, model_service_worker):
+    message = 'hello socket'
+    code = 007
 
-    assert isinstance(error.value, ValueError)
-    assert error.value.args[0] == "Invalid parameter passed to stop server connection"
+    resp = {'code': code, 'message': message}
 
-
-def test_stop_server_with_exception(socket_patches, model_service_worker):
-    close_exception = Exception("exception")
-    socket_patches.socket.close.side_effect = close_exception
-    log_call_param = "Error closing the socket {}. Msg: {}".format(socket_patches.socket, repr(close_exception))
-
-    model_service_worker.stop_server(sock=socket_patches.socket)
-
-    socket_patches.socket.close.assert_called()
-    socket_patches.log_msg.assert_called_with(log_call_param)
-
-
-def test_stop_server(socket_patches, model_service_worker):
     with patch.object(model_service_worker, 'send_response', wraps=model_service_worker.send_response) as spy:
-        model_service_worker.stop_server(socket_patches.socket)
-        spy.assert_called()
+        model_service_worker.create_and_send_response(socket_patches.socket, code, message)
+        spy.assert_called_with(socket_patches.socket, json.dumps(resp))
+
+        preds = "some preds"
+        resp['predictions'] = preds
+        model_service_worker.create_and_send_response(socket_patches.socket, code, message, preds)
+        spy.assert_called_with(socket_patches.socket, json.dumps(resp))
+
+
+class TestRecvMsg():
+    def test_with_nil_pkt(self, socket_patches):
+        socket_patches.socket.recv.return_value = None
+        with pytest.raises(SystemExit) as ex:
+            MXNetModelServiceWorker.recv_msg(socket_patches.socket)
+
+        assert ex.value.args[0] == 1  # The exit status is exit(1)
+
+    def test_with_IO_Error(self, socket_patches):
+        socket_patches.socket.recv.side_effect = IOError('IOError')
+
+        with pytest.raises(MMSError) as ex:
+            MXNetModelServiceWorker.recv_msg(socket_patches.socket)
+
+        assert ex.value.get_code() == ModelServerErrorCodes.RECEIVE_ERROR
+        assert ex.value.get_message() == "IOError"
+
+    def test_with_OSError(self, socket_patches):
+        socket_patches.socket.recv.side_effect = OSError('OSError')
+
+        with pytest.raises(MMSError) as ex:
+            MXNetModelServiceWorker.recv_msg(socket_patches.socket)
+
+        assert ex.value.get_code() == ModelServerErrorCodes.RECEIVE_ERROR
+        assert ex.value.get_message() == "OSError"
+
+    def test_with_Exception(self, socket_patches):
+        socket_patches.socket.recv.side_effect = Exception('Some Exception')
+
+        with pytest.raises(MMSError) as ex:
+            MXNetModelServiceWorker.recv_msg(socket_patches.socket)
+
+        assert ex.value.get_code() == ModelServerErrorCodes.UNKNOWN_EXCEPTION
+        assert ex.value.get_message() == "Some Exception"
+
+    def test_with_json_value_error(self, socket_patches):
+        err_msg = "Some random json error"
+        socket_patches.json_load.side_effect = ValueError(err_msg)
+
+        with pytest.raises(MMSError) as ex:
+            MXNetModelServiceWorker.recv_msg(socket_patches.socket)
+
+        assert ex.value.get_code() == ModelServerErrorCodes.INVALID_MESSAGE
+        assert ex.value.get_message() == "JSON message format error: {}".format(err_msg)
+
+    def test_with_missing_command(self, socket_patches):
+        socket_patches.json_load.return_value = {}
+
+        with pytest.raises(MMSError) as err:
+            MXNetModelServiceWorker.recv_msg(socket_patches.socket)
+
+        assert err.value.get_code() == ModelServerErrorCodes.INVALID_COMMAND
+        assert err.value.get_message() == "Invalid message received"
+
+    def test_return_value(self, socket_patches):
+        recv_pkt = {'command': {'Some command'}}
+        socket_patches.json_load.return_value = recv_pkt
+
+        cmd, data = MXNetModelServiceWorker.recv_msg(socket_patches.socket)
+
+        socket_patches.json_load.assert_called()
+        assert 'command' in data.keys()
+        assert cmd == recv_pkt['command']
+        assert data == recv_pkt
+
+
+class TestSendResponse():
+    def test_with_IO_Error(self, socket_patches, model_service_worker):
+        io_error = IOError("IO Error")
+        socket_patches.socket.send.side_effect = io_error
+        msg = 'hello socket'
+
+        log_call_param = "{}: Send failed. {}.\nMsg: {}".format(ModelServerErrorCodes.SEND_MSG_FAIL, repr(io_error), ''.join([msg, '\r\n']))
+
+        model_service_worker.send_failures = 0
+
+        with pytest.raises(SystemExit) as ex:
+            for i in range(1, MAX_FAILURE_THRESHOLD + 1):
+
+                model_service_worker.send_response(socket_patches.socket, msg)
+                socket_patches.socket.send.assert_called()
+                assert model_service_worker.send_failures == i
+                socket_patches.log_msg.assert_called_with(log_call_param)
+
+        # The exit status is exit(SEND_FAILS_EXCEEDS_LIMITS)
+        assert ex.value.args[0] == ModelServerErrorCodes.SEND_FAILS_EXCEEDS_LIMITS
+
+
+    def test_with_OS_Error(self, socket_patches, model_service_worker):
+        os_error = OSError("OS Error")
+        socket_patches.socket.send.side_effect = os_error
+        msg = 'hello socket'
+
+        log_call_param = "{}: Send failed. {}.\nMsg: {}".format(ModelServerErrorCodes.SEND_MSG_FAIL, repr(os_error), ''.join([msg, '\r\n']))
+
+        model_service_worker.send_failures = 0
+
+        with pytest.raises(SystemExit) as ex:
+            for i in range(1, MAX_FAILURE_THRESHOLD + 1):
+
+                model_service_worker.send_response(socket_patches.socket, msg)
+                socket_patches.socket.send.assert_called()
+                assert model_service_worker.send_failures == i
+                socket_patches.log_msg.assert_called_with(log_call_param)
+
+        # The exit status is exit(SEND_FAILS_EXCEEDS_LIMITS)
+        assert ex.value.args[0] == ModelServerErrorCodes.SEND_FAILS_EXCEEDS_LIMITS
+
+
+class TestStopServer():
+    def test_with_nil_sock(self, model_service_worker):
+        with pytest.raises(ValueError) as error:
+            model_service_worker.stop_server(sock=None)
+
+        assert isinstance(error.value, ValueError)
+        assert error.value.args[0] == "Invalid parameter passed to stop server connection"
+
+    def test_with_exception(self, socket_patches, model_service_worker):
+        close_exception = Exception("exception")
+        socket_patches.socket.close.side_effect = close_exception
+        log_call_param = "Error closing the socket {}. Msg: {}".format(socket_patches.socket, repr(close_exception))
+
+        model_service_worker.stop_server(sock=socket_patches.socket)
+
         socket_patches.socket.close.assert_called()
+        socket_patches.log_msg.assert_called_with(log_call_param)
 
+    def test_stop_server(self, socket_patches, model_service_worker):
+        with patch.object(model_service_worker, 'send_response', wraps=model_service_worker.send_response) as spy:
+            model_service_worker.stop_server(socket_patches.socket)
+            spy.assert_called()
+            socket_patches.socket.close.assert_called()
 
-def test_run_server_with_socket_bind_error(socket_patches, model_service_worker):
-    bind_exception = socket.error("binding error")
-    socket_patches.socket.bind.side_effect = bind_exception
+class TestRunServer():
 
-    with pytest.raises(MMSError) as err:
-        model_service_worker.run_server()
+    def test_run_server_with_socket_bind_error(self, socket_patches, model_service_worker):
+        bind_exception = socket.error("binding error")
+        socket_patches.socket.bind.side_effect = bind_exception
+        with pytest.raises(MMSError) as err:
+            model_service_worker.run_server()
 
-    socket_patches.socket.bind.assert_called()
-    socket_patches.socket.listen.assert_not_called()
-    assert err.value.get_code() == ModelServerErrorCodes.SOCKET_BIND_ERROR
-
-
-def test_run_server_with_os_error(socket_patches, model_service_worker):
-
-    socket_patches.socket.accept.side_effect = OSError("OSError")
-    with pytest.raises(Exception) as err:
-        model_service_worker.run_server()
-        socket_patches.log_msg.assert_called_with("MxNet worker started.\n")
         socket_patches.socket.bind.assert_called()
-        socket_patches.socket.listen.assert_called()
-        socket_patches.socket.accept.assert_called()
-        socket_patches.log_msg.assert_called_with("Waiting for a connections")
+        socket_patches.socket.listen.assert_not_called()
+        assert err.value.get_code() == ModelServerErrorCodes.SOCKET_BIND_ERROR
 
-    assert isinstance(err.value, OSError)
+    def test_run_server_with_os_error(self, socket_patches, model_service_worker):
+        socket_patches.socket.accept.side_effect = OSError("OSError")
+        with pytest.raises(Exception) as err:
+            model_service_worker.run_server()
+            socket_patches.log_msg.assert_called_with("MxNet worker started.\n")
+            socket_patches.socket.bind.assert_called()
+            socket_patches.socket.listen.assert_called()
+            socket_patches.socket.accept.assert_called()
+            socket_patches.log_msg.assert_called_with("Waiting for a connections")
 
+        assert isinstance(err.value, OSError)
 
-def test_run_server_with_io_error(socket_patches, model_service_worker):
+    def test_run_server_with_io_error(self, socket_patches, model_service_worker):
+        socket_patches.socket.accept.side_effect = IOError("IOError")
+        with pytest.raises(Exception) as err:
+            model_service_worker.run_server()
+            socket_patches.log_msg.assert_called_with("MxNet worker started.\n")
+            socket_patches.socket.bind.assert_called()
+            socket_patches.socket.listen.assert_called()
+            socket_patches.socket.accept.assert_called()
+            socket_patches.log_msg.assert_called_with("Waiting for a connections")
 
-    socket_patches.socket.accept.side_effect = IOError("IOError")
-    with pytest.raises(Exception) as err:
-        model_service_worker.run_server()
-        socket_patches.log_msg.assert_called_with("MxNet worker started.\n")
-        socket_patches.socket.bind.assert_called()
-        socket_patches.socket.listen.assert_called()
-        socket_patches.socket.accept.assert_called()
-        socket_patches.log_msg.assert_called_with("Waiting for a connections")
+        assert isinstance(err.value, IOError)
 
-    assert isinstance(err.value, IOError)
+    def test_run_server_with_exception(self, socket_patches, model_service_worker):
+        socket_patches.socket.accept.side_effect = Exception("Some Exception")
 
-
-def test_run_server_with_exception(socket_patches, model_service_worker):
-    socket_patches.socket.accept.side_effect = Exception("Some Exception")
-
-    with pytest.raises(Exception) as err:
-        model_service_worker.run_server()
-        socket_patches.log_msg.assert_called_with("MxNet worker started.\n")
-        socket_patches.socket.bind.assert_called()
-        socket_patches.socket.listen.assert_called()
-        socket_patches.socket.accept.assert_called()
-        socket_patches.log_msg.assert_called_with("Waiting for a connections")
+        with pytest.raises(Exception) as err:
+            model_service_worker.run_server()
+            socket_patches.log_msg.assert_called_with("MxNet worker started.\n")
+            socket_patches.socket.bind.assert_called()
+            socket_patches.socket.listen.assert_called()
+            socket_patches.socket.accept.assert_called()
+            socket_patches.log_msg.assert_called_with("Waiting for a connections")
