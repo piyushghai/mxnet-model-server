@@ -227,5 +227,41 @@ def test_run_server_with_socket_bind_error(socket_patches, model_service_worker)
     assert err.value.get_code() == ModelServerErrorCodes.SOCKET_BIND_ERROR
 
 
-def test_run_server_with_OS_Error(socket_patches, model_service_worker):
-    pass
+def test_run_server_with_os_error(socket_patches, model_service_worker):
+
+    socket_patches.socket.accept.side_effect = OSError("OSError")
+    with pytest.raises(Exception) as err:
+        model_service_worker.run_server()
+        socket_patches.log_msg.assert_called_with("MxNet worker started.\n")
+        socket_patches.socket.bind.assert_called()
+        socket_patches.socket.listen.assert_called()
+        socket_patches.socket.accept.assert_called()
+        socket_patches.log_msg.assert_called_with("Waiting for a connections")
+
+    assert isinstance(err.value, OSError)
+
+
+def test_run_server_with_io_error(socket_patches, model_service_worker):
+
+    socket_patches.socket.accept.side_effect = IOError("IOError")
+    with pytest.raises(Exception) as err:
+        model_service_worker.run_server()
+        socket_patches.log_msg.assert_called_with("MxNet worker started.\n")
+        socket_patches.socket.bind.assert_called()
+        socket_patches.socket.listen.assert_called()
+        socket_patches.socket.accept.assert_called()
+        socket_patches.log_msg.assert_called_with("Waiting for a connections")
+
+    assert isinstance(err.value, IOError)
+
+
+def test_run_server_with_exception(socket_patches, model_service_worker):
+    socket_patches.socket.accept.side_effect = Exception("Some Exception")
+
+    with pytest.raises(Exception) as err:
+        model_service_worker.run_server()
+        socket_patches.log_msg.assert_called_with("MxNet worker started.\n")
+        socket_patches.socket.bind.assert_called()
+        socket_patches.socket.listen.assert_called()
+        socket_patches.socket.accept.assert_called()
+        socket_patches.log_msg.assert_called_with("Waiting for a connections")
