@@ -143,6 +143,8 @@ class MXNetModelServiceWorker(object):
             raise MMSError(err.RECEIVE_ERROR, "{}".format(sock_err.message))
         except ValueError as v:
             raise MMSError(err.INVALID_REQUEST, "JSON message format error: {}".format(v))
+        except MMSError as error:  # The error raise in #138 goes into the Exception block below and we lose the
+            raise error           # status code
         except Exception as e:  # pylint: disable=broad-except
             raise MMSError(err.UNKNOWN_EXCEPTION, "{}".format(e))
 
@@ -171,7 +173,7 @@ class MXNetModelServiceWorker(object):
 
         return model_in
 
-    def retrieve_data_for_inference(self, requests=None, model_service=None):
+    def retrieve_data_for_inference(self, requests=None):
         """
         REQUESTS = [ {
             "requestId" : "111-222-3333",
@@ -194,12 +196,6 @@ class MXNetModelServiceWorker(object):
 
         if requests is None:
             raise ValueError("Received invalid inputs")
-
-        if req_to_id_map is None:
-            raise ValueError("Request ID map is invalid")
-
-        if model_service is None:
-            raise ValueError("Model Service metadata is invalid")
 
         input_batch = []
         for batch_idx, request_batch in enumerate(requests):
@@ -442,7 +438,7 @@ class MXNetModelServiceWorker(object):
             # socket fails, the backend worker will quit
 
             try:
-                log_msg("Waiting for a connections")
+                log_msg("Waiting for a connection")
 
                 (cl_socket, _) = self.sock.accept()
                 self.handle_connection(cl_socket)
