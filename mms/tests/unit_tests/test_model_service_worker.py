@@ -241,3 +241,35 @@ class TestRunServer():
         socket_patches.socket.listen.assert_called()
         socket_patches.socket.accept.assert_called()
         socket_patches.log_msg.assert_called_with("Waiting for a connection")
+
+
+class TestRetrieveDataForInference():
+    valid_req = [{'requestId': '111-222-3333', 'encoding': 'None|base64|utf-8', 'modelInputs': '[{}]'}]
+
+    def test_with_nil_request(self, model_service_worker):
+        with pytest.raises(ValueError) as err:
+            model_service_worker.retrieve_data_for_inference(requests=None)
+
+        assert err.value.args[0] == "Received invalid inputs"
+
+    def test_with_invalid_req(self, model_service_worker, socket_patches, mocker):
+        retrieve_model_input_spy = mocker.patch.object(model_service_worker, 'retrieve_model_input',
+                                                       wraps=model_service_worker.retrieve_model_input)
+
+        socket_patches.msg_validator.validate_predict_data.side_effect = MMSError(ModelServerErrorCodes.INVALID_PREDICT_INPUT, 'Some message')
+
+        with pytest.raises(MMSError) as err:
+            model_service_worker.retrieve_data_for_inference(requests=self.valid_req)
+
+        retrieve_model_input_spy.assert_not_called()
+        assert err.value.get_code() == ModelServerErrorCodes.INVALID_PREDICT_INPUT
+
+    def test_valid_req(self, model_service_worker, socket_patches, mocker):
+        retrieve_model_input_spy = mocker.patch.object(model_service_worker, 'retrieve_model_input',
+                                                       wraps=model_service_worker.retrieve_model_input)
+
+        retrieve_model_input_spy.return_value = 'some-return-val'
+        model_service_worker.retrieve_data_for_inference(requests=self.valid_req)
+
+        socket_patches.msg_validator.validate_predict_data.assert_called()
+        retrieve_model_input_spy.assert_called()

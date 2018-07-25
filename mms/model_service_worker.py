@@ -171,7 +171,7 @@ class MXNetModelServiceWorker(object):
 
         return model_in
 
-    def retrieve_data_for_inference(self, requests=None, model_service=None):
+    def retrieve_data_for_inference(self, requests=None):
         """
         REQUESTS = [ {
             "requestId" : "111-222-3333",
@@ -194,12 +194,6 @@ class MXNetModelServiceWorker(object):
 
         if requests is None:
             raise ValueError("Received invalid inputs")
-
-        if req_to_id_map is None:
-            raise ValueError("Request ID map is invalid")
-
-        if model_service is None:
-            raise ValueError("Model Service metadata is invalid")
 
         input_batch = []
         for batch_idx, request_batch in enumerate(requests):
