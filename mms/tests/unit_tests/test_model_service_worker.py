@@ -136,7 +136,8 @@ class TestRecvMsg():
 
 
 class TestSendResponse():
-    def test_with_IO_Error(self, socket_patches, model_service_worker):
+
+    def test_with_io_error(self, socket_patches, model_service_worker):
         io_error = IOError("IO Error")
         socket_patches.socket.send.side_effect = io_error
         msg = 'hello socket'
@@ -156,8 +157,7 @@ class TestSendResponse():
         # The exit status is exit(SEND_FAILS_EXCEEDS_LIMITS)
         assert ex.value.args[0] == ModelServerErrorCodes.SEND_FAILS_EXCEEDS_LIMITS
 
-
-    def test_with_OS_Error(self, socket_patches, model_service_worker):
+    def test_with_os_error(self, socket_patches, model_service_worker):
         os_error = OSError("OS Error")
         socket_patches.socket.send.side_effect = os_error
         msg = 'hello socket'
@@ -204,7 +204,7 @@ class TestStopServer():
 
 class TestRunServer():
 
-    def test_run_server_with_socket_bind_error(self, socket_patches, model_service_worker):
+    def test_with_socket_bind_error(self, socket_patches, model_service_worker):
         bind_exception = socket.error("binding error")
         socket_patches.socket.bind.side_effect = bind_exception
         with pytest.raises(MMSError) as err:
@@ -214,7 +214,7 @@ class TestRunServer():
         socket_patches.socket.listen.assert_not_called()
         assert err.value.get_code() == ModelServerErrorCodes.SOCKET_BIND_ERROR
 
-    def test_run_server_with_exception(self, socket_patches, model_service_worker):
+    def test_with_exception(self, socket_patches, model_service_worker):
         exception = Exception("Some Exception")
         socket_patches.socket.accept.side_effect = exception
 
