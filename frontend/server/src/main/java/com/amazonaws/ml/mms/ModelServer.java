@@ -14,6 +14,7 @@ package com.amazonaws.ml.mms;
 
 import com.amazonaws.ml.mms.archive.InvalidModelException;
 import com.amazonaws.ml.mms.archive.ModelArchive;
+import com.amazonaws.ml.mms.metrics.MetricManager;
 import com.amazonaws.ml.mms.util.ConfigManager;
 import com.amazonaws.ml.mms.util.NettyUtils;
 import com.amazonaws.ml.mms.util.ServerGroups;
@@ -30,12 +31,14 @@ import io.netty.handler.ssl.SslContext;
 import io.netty.util.internal.logging.InternalLoggerFactory;
 import io.netty.util.internal.logging.Slf4JLoggerFactory;
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Collection;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -72,6 +75,8 @@ public class ModelServer {
             initModelStore();
 
             ChannelFuture f = start();
+            // Create and schedule metrics manager
+            MetricManager.scheduleMetrics(configManager);
             System.out.println("Model server started.");
             f.sync();
         } finally {
@@ -91,19 +96,35 @@ public class ModelServer {
             ModelManager modelManager = ModelManager.getInstance();
             String loadModels = configManager.getLoadModels();
             if ("ALL".equalsIgnoreCase(loadModels)) {
-                String[] extensions = new String[] {"model"};
+                String[] extensions = new String[] {"model", "mar"};
                 Collection<File> models = FileUtils.listFiles(modelStore, extensions, false);
                 for (File modelFile : models) {
                     ModelArchive archive = modelManager.registerModel(modelFile.getName());
                     modelManager.updateModel(archive.getModelName(), 1, 1);
                 }
+                // Check folders to see if they can be models as well
+                File[] dirs =
+                        modelStore.listFiles((FileFilter) FileFilterUtils.directoryFileFilter());
+                if (dirs != null) {
+                    for (File dir : dirs) {
+                        ModelArchive archive = modelManager.registerModel(dir.getName());
+                        modelManager.updateModel(archive.getModelName(), 1, 1);
+                    }
+                }
             } else {
                 String[] models = loadModels.split(",");
                 for (String model : models) {
                     File modelFile = new File(modelStore, model);
-                    if (!modelFile.exists() && !model.endsWith(".model")) {
-                        modelFile = new File(modelStore, model + ".model");
+                    if (!modelFile.exists()) {
+                        if (!model.endsWith(".model")) {
+                            modelFile = new File(modelStore, model + ".model");
+                        }
+
+                        if (!model.endsWith(".mar")) {
+                            modelFile = new File(modelStore, model + ".mar");
+                        }
                     }
+
                     if (modelFile.exists()) {
                         ModelArchive archive = modelManager.registerModel(modelFile.getName());
                         modelManager.updateModel(archive.getModelName(), 1, 1);

@@ -10,38 +10,28 @@
  * OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions
  * and limitations under the License.
  */
-package com.amazonaws.ml.mms.http;
+package com.amazonaws.ml.mms.metrics;
 
-public class ErrorResponse {
+public class Dimension {
 
-    private int code;
-    private String type;
-    private String message;
+    private String name;
+    private String value;
 
-    public ErrorResponse() {
+    public Dimension() {}
+
+    public String getName() {
+        return name;
     }
 
-    public ErrorResponse(int code, String message) {
-        this.code = code;
-        this.message = message;
+    public void setName(String name) {
+        this.name = name;
     }
 
-    public ErrorResponse(int code, String type, String message) {
-
-        this.code = code;
-        this.type = type;
-        this.message = message;
+    public String getValue() {
+        return value;
     }
 
-    public int getCode() {
-        return code;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public String getMessage() {
-        return message;
+    public void setValue(String value) {
+        this.value = value;
     }
 }
