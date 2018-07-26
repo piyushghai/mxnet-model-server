@@ -116,7 +116,7 @@ class MXNetModelServiceWorker(object):
         return resp
 
     @staticmethod
-    def recv_msg(client_sock):
+    def recv_msg(self, client_sock):
         """
         Receive a message from a given socket file descriptor
         :param client_sock:
