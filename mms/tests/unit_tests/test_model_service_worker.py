@@ -31,9 +31,7 @@ def socket_patches(mocker):
     mock_patch = Patches(mocker.patch('socket.socket'), mocker.patch('mms.model_service_worker.log_msg'),
                         mocker.patch('mms.model_service_worker.ModelWorkerMessageValidators'),
                         mocker.patch('mms.model_service_worker.ModelWorkerCodecHelper'),
-                         mocker.patch('json.loads'), mocker.patch('mms.model_service_worker.log_error'))
-
-    mocker.patch('mms.model_service_worker.debug', False, create=True)
+                        mocker.patch('json.loads'), mocker.patch('mms.model_service_worker.log_error'))
     mock_patch.socket.recv.return_value = b'{}\r\n'
     return mock_patch
 
@@ -210,6 +208,8 @@ class TestSendResponse():
 
 class TestRunServer():
 
+    accept_result = ('cl_sock', None)
+
     def test_with_socket_bind_error(self, socket_patches, model_service_worker):
         bind_exception = socket.error("binding error")
         socket_patches.socket.bind.side_effect = bind_exception
@@ -231,10 +231,37 @@ class TestRunServer():
         socket_patches.socket.accept.assert_called()
         socket_patches.log_msg.assert_called_with("Waiting for a connection")
 
+    def test_with_exception_debug(self, socket_patches, model_service_worker, mocker):
+        exception = Exception("Some Exception")
+        socket_patches.socket.accept.side_effect = exception
+        mocker.patch('mms.model_service_worker.debug', True)
+        model_service_worker.handle_connection = Mock()
+        socket_patches.log_error.side_effect = exception
+
+        with pytest.raises(Exception) as excinfo:
+            model_service_worker.run_server()
+
+        socket_patches.socket.bind.assert_called()
+        socket_patches.socket.listen.assert_called()
+        socket_patches.socket.accept.assert_called()
+        socket_patches.log_error.assert_called_with("Backend worker error Some Exception")
+        socket_patches.log_msg.assert_called_with("Waiting for a connection")
+
+    def test_success_debug(self, socket_patches, model_service_worker, mocker):
+
+        model_service_worker.sock.accept.side_effect = [self.accept_result, Exception()]
+        model_service_worker.handle_connection = Mock()
+        mocker.patch('mms.model_service_worker.debug', True)
+        socket_patches.log_error.side_effect = Exception()
+
+        with pytest.raises(Exception) as excinfo:
+            model_service_worker.run_server()
+        assert model_service_worker.sock.accept.call_count == 2
+        model_service_worker.handle_connection.assert_called_once()
+
     def test_success(self, socket_patches, model_service_worker):
 
-        model_service_worker.sock.accept = Mock()
-        model_service_worker.sock.accept.return_value = ('cl_sock', None)
+        model_service_worker.sock.accept.return_value = self.accept_result
         model_service_worker.handle_connection = Mock()
         with pytest.raises(SystemExit) as excinfo:
             model_service_worker.run_server()
