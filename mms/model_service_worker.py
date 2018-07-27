@@ -93,10 +93,10 @@ class MXNetModelServiceWorker(object):
                 result.update({"requestId": req_id_map[idx]})
                 result.update({"code": 200})
 
-                if isinstance(val, bytes):
-                    value = ModelWorkerCodecHelper.encode_msg(encoding, val)
-                elif isinstance(val, str):
+                if isinstance(val, str):
                     value = ModelWorkerCodecHelper.encode_msg(encoding, val.encode('utf-8'))
+                elif isinstance(val, bytes):
+                    value = ModelWorkerCodecHelper.encode_msg(encoding, val)
                 else:
                     value = ModelWorkerCodecHelper.encode_msg(encoding, json.dumps(val).encode('utf-8'))
 
@@ -116,7 +116,7 @@ class MXNetModelServiceWorker(object):
         return resp
 
     @staticmethod
-    def recv_msg(self, client_sock):
+    def recv_msg(client_sock):
         """
         Receive a message from a given socket file descriptor
         :param client_sock:
@@ -140,7 +140,7 @@ class MXNetModelServiceWorker(object):
             if u'command' not in in_msg:
                 raise MMSError(err.INVALID_COMMAND, "Invalid message received")
         except (IOError, OSError) as sock_err:
-            raise MMSError(err.RECEIVE_ERROR, "{}".format(sock_err.message))
+            raise MMSError(err.RECEIVE_ERROR, "{}".format(repr(sock_err)))
         except ValueError as v:
             raise MMSError(err.INVALID_REQUEST, "JSON message format error: {}".format(v))
         except MMSError as error:  # The error raise in #138 goes into the Exception block below and we lose the
@@ -431,7 +431,7 @@ class MXNetModelServiceWorker(object):
 
         except Exception as e:  # pylint: disable=broad-except
             raise MMSError(err.SOCKET_BIND_ERROR,
-                           "Socket {} could not be bound to. {}: {}".format(self.sock_name, e.__module__, e.message))
+                           "Socket {} could not be bound to. {}".format(self.sock_name, repr(e)))
 
         while True:
             #  TODO: In the initial release we will only support single connections to a worker. If the
@@ -469,8 +469,8 @@ def emit_metrics(metrics):
     print('[/METRICS]')
     sys.stdout.flush()
 
-
-if __name__ == "__main__":
+def main():
+    global debug
     # TODO: Use the argprocess
     debug = False
     if len(sys.argv) != 2:
@@ -487,3 +487,7 @@ if __name__ == "__main__":
         log_error("Error starting the server. {}".format(str(e)))
         exit(1)
     exit(0)
+
+
+if __name__ == "__main__":
+    main()
