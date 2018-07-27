@@ -19,8 +19,7 @@ import socket
 import pytest
 import json
 from collections import namedtuple
-from mock import patch, Mock
-
+from mock import Mock
 from mms.mxnet_model_service_error import MMSError
 from mms.utils.model_server_error_codes import ModelServerErrorCodes as err
 from mms.model_service_worker import MXNetModelServiceWorker, MAX_FAILURE_THRESHOLD, emit_metrics
@@ -591,3 +590,93 @@ def test_emit_metrics(mocker):
 
     for k in metrics.keys():
         assert k in dumps.call_args_list[0][0][0]
+
+
+class TestHandleConnection():
+
+    @pytest.fixture()
+    def get_spies(self, model_service_worker, mocker):
+        Patches = namedtuple('Patches', ['recv_msg', 'predict', 'stop_server', 'load_model', 'unload_model',
+                                         'create_and_send_response'])
+        mock_patch = Patches(mocker.patch.object(model_service_worker, 'recv_msg', wraps=model_service_worker.recv_msg),
+                             mocker.patch.object(model_service_worker, 'predict', wraps=model_service_worker.predict),
+                             mocker.patch.object(model_service_worker, 'stop_server',
+                                                 wraps=model_service_worker.stop_server),
+                             mocker.patch.object(model_service_worker, 'load_model',
+                                                 wraps=model_service_worker.load_model),
+                             mocker.patch.object(model_service_worker, 'unload_model',
+                                                 wraps=model_service_worker.unload_model),
+                             mocker.patch.object(model_service_worker, 'create_and_send_response',
+                                                 wraps=model_service_worker.create_and_send_response))
+
+        return mock_patch
+
+    def test_with_exit(self, model_service_worker, socket_patches, get_spies):
+        get_spies.recv_msg.return_value = 'SToP', 'somedata' # Since we do a cmd.lower() so testing with a variant...
+
+        with pytest.raises(SystemExit) as ex:
+            model_service_worker.handle_connection(socket_patches.socket)
+
+        get_spies.recv_msg.assert_called()
+        get_spies.stop_server.assert_called()
+        assert ex.value.args[0] == 1
+
+    def test_with_predict(self, model_service_worker, socket_patches, get_spies):
+        get_spies.recv_msg.side_effect = [('PreDiCT', 'somedata'), ('stop', 'somedata')]
+
+        with pytest.raises(SystemExit) as ex:
+            model_service_worker.handle_connection(socket_patches.socket)
+
+        get_spies.predict.assert_called()
+        get_spies.recv_msg.assert_called()
+        get_spies.stop_server.assert_called()
+
+    def test_with_load(self, model_service_worker, socket_patches, get_spies):
+        get_spies.recv_msg.side_effect = [('load', 'somedata'), ('stop', 'somedata')]
+
+        with pytest.raises(SystemExit) as ex:
+            model_service_worker.handle_connection(socket_patches.socket)
+
+        get_spies.load_model.assert_called()
+        get_spies.recv_msg.assert_called()
+        get_spies.stop_server.assert_called()
+
+    def test_with_unload(self, model_service_worker, socket_patches, get_spies):
+        get_spies.recv_msg.side_effect = [('unload', 'somedata'), ('stop', 'somedata')]
+
+        with pytest.raises(SystemExit) as ex:
+            model_service_worker.handle_connection(socket_patches.socket)
+
+        get_spies.unload_model.assert_called()
+        get_spies.recv_msg.assert_called()
+        get_spies.stop_server.assert_called()
+
+    def test_with_unknown_cmd(self, model_service_worker, socket_patches, get_spies):
+        result = "Received unknown command: {}".format('unk')
+        err_code = err.UNKNOWN_COMMAND
+
+        get_spies.recv_msg.side_effect = [('unk', 'somedata'), ('stop', 'somedata')]
+
+        with pytest.raises(SystemExit) as ex:
+            model_service_worker.handle_connection(socket_patches.socket)
+
+        get_spies.create_and_send_response.assert_called_with(socket_patches.socket, err_code, result, None)
+        get_spies.recv_msg.assert_called()
+        get_spies.stop_server.assert_called()
+
+    def test_with_mms_error(self, model_service_worker, socket_patches, get_spies):
+        error = MMSError(err.SEND_FAILS_EXCEEDS_LIMITS, "Unknown Error")
+        get_spies.recv_msg.side_effect = error
+
+        model_service_worker.handle_connection(socket_patches.socket)
+        socket_patches.log_error.assert_called()
+
+    def test_with_mms_error(self, model_service_worker, socket_patches, get_spies):
+        error = Exception("Unknown Error")
+        get_spies.recv_msg.side_effect = [error, ('stop', 'somedata')]
+
+        with pytest.raises(SystemExit) as ex:
+            model_service_worker.handle_connection(socket_patches.socket)
+
+        socket_patches.log_error.assert_called()
+        get_spies.create_and_send_response.assert_called()
