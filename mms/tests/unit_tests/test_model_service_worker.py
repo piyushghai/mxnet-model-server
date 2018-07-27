@@ -65,7 +65,7 @@ def test_retrieve_model_input(socket_patches, model_service_worker):
 class TestCreateAndSendResponse():
     message = 'hello socket'
     code = 7
-    resp = {'code' : code, 'message' : message}
+    resp = {'code': code, 'message': message}
 
     @pytest.fixture()
     def get_send_response_spy(self, model_service_worker, mocker):

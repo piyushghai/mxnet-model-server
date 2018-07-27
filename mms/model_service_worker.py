@@ -470,11 +470,7 @@ def emit_metrics(metrics):
     sys.stdout.flush()
 
 
-def main():
-    """
-    The main method
-    :return:
-    """
+if __name__ == "__main__":
     # TODO: Use the argprocess
     if len(sys.argv) != 2:
         assert 0, "Invalid parameters given"
@@ -490,7 +486,3 @@ def main():
         log_error("Error starting the server. {}".format(str(e)))
         exit(1)
     exit(0)
-
-
-if __name__ == "__main__":
-    main()
