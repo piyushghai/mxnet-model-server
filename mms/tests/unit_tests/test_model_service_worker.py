@@ -433,7 +433,7 @@ class TestMXNetModelServiceWorker:
         def test_success(self, patches, worker):
             response, msg, code = worker.predict(self.data)
             patches.validate.assert_called_once_with(self.data)
-            worker.retrieve_data_for_inference.assert_called_once_with(['data'], patches.model_service)
+            worker.retrieve_data_for_inference.assert_called_once_with(['data'])
             patches.model_service.inference.assert_called_once_with(['inputBatch1'])
             patches.emit.assert_called_once_with(patches.model_service.metrics_store.store)
             worker.create_predict_response.assert_called_once_with([patches.model_service.inference()], 'req_id_map', 'invalid_reqs')
