@@ -19,7 +19,6 @@ import socket
 import os
 import sys
 import json
-import base64
 from builtins import bytes
 from builtins import str
 
@@ -33,7 +32,7 @@ from mms.utils.model_server_error_codes import ModelServerErrorCodes as err
 from mms.metrics.metric_encoder import MetricEncoder
 
 MAX_FAILURE_THRESHOLD = 5
-
+debug = False
 
 class MXNetModelServiceWorker(object):
     """
@@ -106,7 +105,8 @@ class MXNetModelServiceWorker(object):
             for req in invalid_reqs.keys():
                 result.update({"requestId": req})
                 result.update({"code": invalid_reqs.get(req)})
-                result.update({"value": ModelWorkerCodecHelper.encode_msg(encoding, "Invalid input provided".encode('utf-8'))})
+                result.update({"value": ModelWorkerCodecHelper.encode_msg(encoding,
+                                                                          "Invalid input provided".encode('utf-8'))})
                 result.update({"encoding": encoding})
 
             resp = [result]
@@ -249,7 +249,7 @@ class MXNetModelServiceWorker(object):
             model_service = loaded_services[model_name]
             req_batch = data[u'requestBatch']
             batch_size = len(req_batch)  # num-inputs gives the batch size
-            input_batch, req_id_map, invalid_reqs = self.retrieve_data_for_inference(req_batch, model_service)
+            input_batch, req_id_map, invalid_reqs = self.retrieve_data_for_inference(req_batch)
             if batch_size == 1:
                 # Initialize metrics at service level
                 model_service.metrics_init(model_name, req_id_map)
@@ -469,10 +469,13 @@ def emit_metrics(metrics):
     print('[/METRICS]')
     sys.stdout.flush()
 
+
 def main():
-    global debug
+    """
+    The main method
+    :return:
+    """
     # TODO: Use the argprocess
-    debug = False
     if len(sys.argv) != 2:
         assert 0, "Invalid parameters given"
     socket_name = sys.argv[1]
