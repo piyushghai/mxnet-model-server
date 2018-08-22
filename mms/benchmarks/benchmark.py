@@ -42,7 +42,8 @@ MODEL_MAP = {
     'squeezenet': ('imageInputModelPlan.jmx', {'url': 'https://s3.amazonaws.com/model-server/models/squeezenet_v1.1/squeezenet_v1.1.model', 'model_name': 'squeezenet', 'input_filepath': 'kitten.jpg'}),
     'resnet': ('imageInputModelPlan.jmx', {'url': 'https://s3.amazonaws.com/model-server/models/resnet-18/resnet-18.model', 'model_name': 'resnet-18', 'input_filepath': 'kitten.jpg'}),
     'lstm': ('textInputModelPlan.jmx', {'url': 'https://s3.amazonaws.com/model-server/models/lstm_ptb/lstm_ptb.model'}),
-    'noop': ('textInputModelPlan.jmx', {})
+    'noop': ('textInputModelPlan.jmx', {'url': 'https://s3.amazonaws.com/model-server/models/noop/noop-v1.0.model', 'model_name': 'noop-v1.0'}),
+    'noop_echo': ('imageInputModelPlan.jmx', {'url': 'https://s3.amazonaws.com/model-server/models/noop/noop_echo-v1.0.model', 'model_name': 'noop_echo-v1.0', 'input_filepath': 'kitten.jpg'})
 }
 
 JMETER_RESULT_SETTINGS = {
@@ -60,9 +61,9 @@ JMETER = '{}/{}/libexec/bin/jmeter'.format(CELLAR, JMETER_VERSION)
 MMS_BASE = reduce(lambda val,func: func(val), (os.path.abspath(__file__),) + (os.path.dirname,) * 3)
 
 
-ALL_BENCHMARKS = list(itertools.product(('latency', 'throughput', 'concurrent_inference'), ('resnet', 'squeezenet'))) \
+ALL_BENCHMARKS = list(itertools.product(('latency', 'throughput', 'concurrent_inference'), ('resnet', 'squeezenet', 'noop', 'noop_echo'))) \
                + list(itertools.product(('load', 'repeated_scale_calls'), ('resnet'))) \
-               + [('noop', 'multiple_models')]
+               + [('multiple_models', 'noop')]
 
 
 

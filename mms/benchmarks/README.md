@@ -30,7 +30,8 @@ The pre-loaded models for the benchmark can be found in the [MMS model zoo](http
 - [resnet: ResNet-18 (Default)](https://github.com/awslabs/mxnet-model-server/blob/master/docs/model_zoo.md#resnet-18)
 - [squeezenet: SqueezeNet V1.1](https://github.com/awslabs/mxnet-model-server/blob/master/docs/model_zoo.md#squeezenet_v1.1)
 - [lstm: lstm-ptb](https://github.com/awslabs/mxnet-model-server/blob/master/docs/model_zoo.md#lstm-ptb)
-- noop: simple noop model not found in the model zoo (coming soon)
+- [noop: noop-v1.0](https://s3.amazonaws.com/model-server/models/noop/noop-v1.0.model) Simple Noop model which returns "Hello world" to any input specified.
+- [noop_echo: noop_echo-v1.0](https://s3.amazonaws.com/model-server/models/noop/noop_echo-v1.0.model) Simple Noop model which returns whatever input is given to it.
 
 ## Benchmarks
 
@@ -59,8 +60,8 @@ Run all benchmarks\
 ```./benchmark.py --all```
 
 
-Run using the lstm model\
-```./benchmark.py latency -m lstm```
+Run using the noop-v1.0 model\
+```./benchmark.py latency -m noop_v1.0```
 
 
 Run on GPU (4 gpus)\
@@ -71,7 +72,7 @@ Run with a custom image\
 ```./benchmark.py latency -i {imageFilePath}```
 
 
-Run with a custom model (requires custom image)\
+Run with a custom model (works only for CNN based models, which accept image as an input for now. We will add support for more input types in future to this command. )\
 ```./benchmark.py latency -c {modelUrl} -i {imageFilePath}```
 
 
