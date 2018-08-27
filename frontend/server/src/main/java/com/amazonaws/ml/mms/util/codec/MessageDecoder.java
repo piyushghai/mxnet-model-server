@@ -17,12 +17,16 @@ import com.amazonaws.ml.mms.util.messages.Predictions;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.handler.codec.ByteToMessageDecoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
+
 public class MessageDecoder extends ByteToMessageDecoder {
+    private final Logger logger = LoggerFactory.getLogger(MessageDecoder.class);
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
         if (in.getByte(in.readableBytes() - 1) == '\n') {
@@ -67,7 +71,7 @@ public class MessageDecoder extends ByteToMessageDecoder {
             // read the delimiter bytes
             in.readBytes(in.readableBytes());
             out.add(response);
-            System.out.println("Decode took " + (System.nanoTime() - startTime) / 1000000 + " ns");
+            logger.info("Decode took " + (System.nanoTime() - startTime) + " ns");
         }
     }
 }

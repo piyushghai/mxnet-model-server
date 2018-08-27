@@ -20,6 +20,7 @@ import os
 import json
 from builtins import bytes
 from builtins import str
+import time
 
 from mms.model_loader import ModelLoader
 from mms.arg_parser import ArgParser
@@ -233,10 +234,11 @@ class MXNetModelServiceWorker(object):
             if batch_size == 1:
                 # Initialize metrics at service level
                 model_service.metrics_init(model_name, req_id_map)
+                startTime = time.time()
                 retval.append(model_service.inference([input_batch[0][i] for i in input_batch[0]]))
+                print("MS {} ms".format((time.time() - startTime) * 1000))
                 # Dump metrics
-                # emit_metrics(model_service.metrics_store.store)
-
+                emit_metrics(model_service.metrics_store.store)
             else:
                 raise MMSError(err.UNSUPPORTED_PREDICT_OPERATION, "Invalid batch size {}".format(batch_size))
 
@@ -353,9 +355,6 @@ class MXNetModelServiceWorker(object):
         try:
             resp = bytearray()
             resp += self.codec.create_response(cmd=3, code=c, message=message, predictions=p)
-            # resp = {'code': c, 'message': message}
-            # if p is not None:
-            #     resp['predictions'] = p
             self.send_response(sock, resp)
         except Exception as ex:
             log_error("{}".format(ex))
@@ -372,17 +371,19 @@ class MXNetModelServiceWorker(object):
         code = 200
         result = None
         cmd = None
-
+        log_msg("Ready to serve")
         while True:
             try:
                 data = self.recv_msg(cl_socket)
+                startTime = time.time()
                 cmd, msg = self.codec.retrieve_msg(data=data)
-
                 if cmd.lower() == u'stop':
                     self.stop_server(cl_socket)
                     exit(1)
                 elif cmd.lower() == u'predict':
+                    predictStart = time.time()
                     predictions, result, code = self.predict(msg)
+                    print("PT {}".format(time.time() - predictStart))
                 elif cmd.lower() == u'load':
                     result, code = self.load_model(msg)
                 elif cmd.lower() == u'unload':
@@ -392,7 +393,7 @@ class MXNetModelServiceWorker(object):
                     code = err.UNKNOWN_COMMAND
 
                 self.create_and_send_response(cl_socket, code, result, predictions)
-
+                print("TT {}: {} ms".format(cmd, time.time() - startTime))
             except MMSError as m:
                 log_error("MMSError {} data {}".format(cmd, m.get_message()))
                 if m.get_code() == err.SEND_FAILS_EXCEEDS_LIMITS:

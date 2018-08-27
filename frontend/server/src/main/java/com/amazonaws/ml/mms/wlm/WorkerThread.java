@@ -50,7 +50,7 @@ public class WorkerThread extends Thread {
     static final Logger logger = LoggerFactory.getLogger(WorkerThread.class);
     static final long WORKER_TIMEOUT = 2L;
     static final StringDecoder STRING_DECODER = new StringDecoder();
-    static final MessageDecoder MSG_DECODER = new MessageDecoder();
+    //static final MessageDecoder MSG_DECODER = new MessageDecoder();
     static final MessageEncoder MSG_ENCODER = new MessageEncoder();
 
     private ConfigManager configManager;
@@ -183,9 +183,9 @@ public class WorkerThread extends Thread {
 //                                            new DelimiterBasedFrameDecoder(
 //                                                    81920000,
 //                                                    Delimiters
-//                                                            .lineDelimiter())); // TODO: Make this config based
-                                    // p.addLast(STRING_DECODER);
-                                    p.addLast(MSG_DECODER);
+//                                                            .lineDelimiter()));
+//                                    p.addLast(STRING_DECODER);
+//                                    p.addLast(new MessageDecoder());
                                     p.addLast(MSG_ENCODER);
                                     p.addLast(new WorkerHandler());
                                 }

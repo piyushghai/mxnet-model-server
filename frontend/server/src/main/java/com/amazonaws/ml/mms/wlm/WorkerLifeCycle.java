@@ -85,7 +85,10 @@ public class WorkerLifeCycle {
             pythonEnv =
                     "PYTHONPATH=" + pythonPath + File.pathSeparator + workingDir.getAbsolutePath();
         }
-        String[] envp = new String[] {pythonEnv};
+        String[] envp = new String[3];
+        envp[0] = pythonEnv;
+        envp[1] = "OMP_NUM_THREADS=1";
+        envp[2] = "MXNET_ENGINE_TYPE=NaiveEngine";
 
         try {
             latch = new CountDownLatch(1);
