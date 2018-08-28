@@ -12,22 +12,66 @@
  */
 package com.amazonaws.ml.mms.util.codec;
 
-import com.amazonaws.ml.mms.util.JsonUtils;
 import com.amazonaws.ml.mms.util.messages.ModelWorkerResponse;
-import io.netty.channel.ChannelHandler;
+import com.amazonaws.ml.mms.util.messages.Predictions;
+import io.netty.buffer.ByteBuf;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.handler.codec.MessageToMessageDecoder;
+import io.netty.handler.codec.ByteToMessageDecoder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 
-@ChannelHandler.Sharable
-public class MessageDecoder extends MessageToMessageDecoder<String> {
 
+public class MessageDecoder extends ByteToMessageDecoder {
+    private final Logger logger = LoggerFactory.getLogger(MessageDecoder.class);
     @Override
-    protected void decode(ChannelHandlerContext ctx, String msg, List<Object> out) {
-        if (msg == null || msg.isEmpty()) {
-            return;
+    protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
+        if (in.getByte(in.readableBytes() - 1) == '\n') {
+            long startTime = System.nanoTime();
+
+            ModelWorkerResponse response = new ModelWorkerResponse();
+
+            Double version = in.readDouble();
+            response.setCode(Integer.toString(in.readInt()));
+            Integer length = in.readInt();
+            response.setMessage(in.readCharSequence(length, StandardCharsets.UTF_8).toString());
+            length = in.readInt();
+            List<Predictions> predictionsList = new ArrayList<>();
+            if (length < 0) {
+                // There are a list of predictions
+                while (length != -2) {
+                    Predictions p = new Predictions();
+                    length = in.readInt();
+                    if (length < 0) continue;
+                    p.setRequestId(in.readCharSequence(length, StandardCharsets.UTF_8).toString());
+                    Integer code = in.readInt();
+
+                    length = in.readInt();
+                    if (length < 0) continue;
+                    String encoding = in.readCharSequence(length, StandardCharsets.UTF_8).toString();
+
+                    length = in.readInt();
+                    if (length < 0) continue;
+                    p.setResp(new byte[length]);
+                    if ((encoding.equalsIgnoreCase("json")) ||
+                            (encoding.equalsIgnoreCase("text"))) {
+                        in.readBytes(p.getResp(), 0, length);
+                    } else {
+                        // Assuming its binary
+                        in.readBytes(p.getResp(), 0, length);
+                    }
+                    predictionsList.add(p);
+                }
+                response.setPredictions(predictionsList);
+            }
+
+            // read the delimiter bytes
+            in.readBytes(in.readableBytes());
+            out.add(response);
+            logger.info("Decode took " + (System.nanoTime() - startTime) + " ns");
         }
-        ModelWorkerResponse resp = JsonUtils.GSON.fromJson(msg, ModelWorkerResponse.class);
-        out.add(resp);
     }
 }

@@ -12,10 +12,11 @@
 Metric Encoder class for json dumps
 """
 
+import json
 from json import JSONEncoder
 
-from mms.metrics.metric import Metric
 from mms.metrics.dimension import Dimension
+from mms.metrics.metric import Metric
 
 
 class MetricEncoder(JSONEncoder):

@@ -22,6 +22,9 @@ class NoopService(SingleNodeService):
     def _inference(self, data):
         return data[0]
 
+    def _postprocess(self, data):
+         return "Hello World"
+
     def ping(self):
         return None
 

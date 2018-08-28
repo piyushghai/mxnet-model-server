@@ -18,6 +18,8 @@ import com.amazonaws.ml.mms.util.messages.ModelLoadModelRequest;
 import com.amazonaws.ml.mms.util.messages.ModelWorkerResponse;
 import com.amazonaws.ml.mms.util.messages.Predictions;
 import com.amazonaws.ml.mms.util.messages.RequestBatch;
+
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.Base64;
 import java.util.LinkedHashMap;
@@ -37,7 +39,7 @@ public class BatchAggregator {
         jobs = new LinkedHashMap<>();
     }
 
-    public BaseModelRequest getRequest(String threadName) throws InterruptedException {
+    public BaseModelRequest getRequest(String threadName) throws InterruptedException, UnsupportedEncodingException {
         jobs.clear();
 
         // first job is a blocking call;
@@ -50,7 +52,7 @@ public class BatchAggregator {
 
         jobs.put(job.getJobId(), job);
 
-        logger.debug("get first job: {}", job.getJobId());
+        // logger.debug("get first job: {}", job.getJobId());
 
         long maxBatchDelay = model.getMaxBatchDelay();
         int size = model.getBatchSize() - 1;
@@ -69,7 +71,7 @@ public class BatchAggregator {
             }
         }
 
-        logger.debug("sending jobs, size: {}", jobs.size());
+        // logger.debug("sending jobs, size: {}", jobs.size());
 
         ModelInferenceRequest req = new ModelInferenceRequest(model.getModelName());
         for (Job j : jobs.values()) {
@@ -94,7 +96,7 @@ public class BatchAggregator {
                     throw new IllegalStateException("Unexpected job: " + jobId);
                 }
                 job.response(
-                        Base64.getDecoder().decode(prediction.getValue()),
+                        prediction.getResp(),
                         prediction.getContentType());
             }
         } else {

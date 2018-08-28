@@ -17,6 +17,7 @@ public class Predictions {
     private String requestId;
     private String contentType;
     private String value; // base64 encoded
+    private byte[] resp;
 
     public Predictions() {}
 
@@ -26,6 +27,14 @@ public class Predictions {
 
     public void setRequestId(String requestId) {
         this.requestId = requestId;
+    }
+
+    public byte[] getResp() {
+        return resp;
+    }
+
+    public void setResp(byte[] resp) {
+        this.resp = resp;
     }
 
     public String getContentType() {

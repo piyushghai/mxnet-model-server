@@ -34,6 +34,7 @@ public class Model {
     // Per workerthread job queue. This separates out the control queue from data queue
     private ConcurrentMap<String, LinkedBlockingDeque<Job>> jobsDb;
 
+
     public Model(ModelArchive modelArchive, int queueSize) {
         this.modelArchive = modelArchive;
         minWorkers = 1;
@@ -83,6 +84,7 @@ public class Model {
         if (resp.isEmpty()) {
             return null;
         }
+
         return resp.keySet().iterator().next();
     }
 

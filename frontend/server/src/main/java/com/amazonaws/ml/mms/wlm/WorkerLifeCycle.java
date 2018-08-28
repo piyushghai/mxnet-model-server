@@ -46,19 +46,26 @@ public class WorkerLifeCycle {
 
     public boolean startWorker(int port) {
         SocketAddress address = NettyUtils.getSocketAddress(port);
-        String[] args = new String[6];
+        int DELTA = 0;
+        String[] args = new String[6+DELTA];
+        System.out.print(args.length);
         args[0] = "python";
-        args[1] = "mms/model_service_worker.py";
-        args[4] = "--sock-type";
+//        args[1] = "-m";
+//        args[2] = "cProfile";
+//        args[3] = "-o";
+//        args[4] = "/tmp/stat.txt";
+
+        args[1+DELTA] = "mms/model_service_worker.py";
+        args[4+DELTA] = "--sock-type";
 
         if (address instanceof DomainSocketAddress) {
-            args[5] = "unix";
-            args[2] = "--sock-name";
-            args[3] = ((DomainSocketAddress) address).path();
+            args[5+DELTA] = "unix";
+            args[2+DELTA] = "--sock-name";
+            args[3+DELTA] = ((DomainSocketAddress) address).path();
         } else {
-            args[5] = "tcp";
-            args[2] = "--port";
-            args[3] = String.valueOf(port);
+            args[5+DELTA] = "tcp";
+            args[2+DELTA] = "--port";
+            args[3+DELTA] = String.valueOf(port);
         }
 
         File workingDir;
@@ -78,7 +85,10 @@ public class WorkerLifeCycle {
             pythonEnv =
                     "PYTHONPATH=" + pythonPath + File.pathSeparator + workingDir.getAbsolutePath();
         }
-        String[] envp = new String[] {pythonEnv};
+        String[] envp = new String[3];
+        envp[0] = pythonEnv;
+        envp[1] = "OMP_NUM_THREADS=1";
+        envp[2] = "MXNET_ENGINE_TYPE=NaiveEngine";
 
         try {
             latch = new CountDownLatch(1);
