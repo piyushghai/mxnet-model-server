@@ -32,7 +32,7 @@ public class WorkLoadManager {
     private ConfigManager configManager;
     private EventLoopGroup backendGroup;
     private int port = 9000;
-    private int gpuCounter;
+    private int gpuCounter = 0;
 
     public WorkLoadManager(ConfigManager configManager, EventLoopGroup backendGroup) {
         this.configManager = configManager;
