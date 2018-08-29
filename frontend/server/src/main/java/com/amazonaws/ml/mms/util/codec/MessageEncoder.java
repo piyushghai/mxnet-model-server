@@ -31,9 +31,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-@ChannelHandler.Sharable
 public class MessageEncoder extends ByteToMessageCodec<BaseModelRequest> {
-    private static final Logger logger = LoggerFactory.getLogger(MessageEncoder.class);
+    //    private static final Logger logger = LoggerFactory.getLogger(MessageEncoder.class);
 
     private void encodeRequestBatch(RequestBatch req, ByteBuf out) {
         out.writeInt(req.getRequestId().length());
@@ -108,7 +107,7 @@ public class MessageEncoder extends ByteToMessageCodec<BaseModelRequest> {
         }
         out.writeBytes("\r\n".getBytes()); // EOM
         long endTime = System.nanoTime();
-        logger.info("Encode took " + (endTime - startTime) + " ns");
+	//        logger.info("Encode took " + (endTime - startTime) + " ns");
     }
 
     @Override
@@ -155,7 +154,7 @@ public class MessageEncoder extends ByteToMessageCodec<BaseModelRequest> {
             // read the delimiter bytes
             in.readBytes(in.readableBytes());
             out.add(response);
-            logger.info("Decode took " + (System.nanoTime() - startTime) + " ns");
+	    //            logger.info("Decode took " + (System.nanoTime() - startTime) + " ns");
         }
     }
 }

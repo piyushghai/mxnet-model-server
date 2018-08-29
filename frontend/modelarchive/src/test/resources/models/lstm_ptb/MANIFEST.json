@@ -1,0 +1,18 @@
+{
+    "Engine": {
+        "MXNet": 0.12
+    }, 
+    "Model-Archive-Description": "lstm_ptb", 
+    "License": "Apache 2.0", 
+    "Model-Archive-Version": 0.1, 
+    "Model-Server": 0.1, 
+    "Model": {
+        "Description": "lstm_ptb", 
+        "Service": "lstm_ptb_service.py", 
+        "Symbol": "lstm_ptb-symbol.json", 
+        "Parameters": "lstm_ptb-0100.params", 
+        "Signature": "signature.json", 
+        "Model-Name": "lstm_ptb", 
+        "Model-Format": "MXNet-Symbolic"
+    }
+}

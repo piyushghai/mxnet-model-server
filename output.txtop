@@ -1,0 +1,22 @@
+UID        PID  PPID  C STIME TTY          TIME CMD
+root         1     0  0 14:02 ?        00:00:00 /bin/bash
+root        81     1  0 14:08 ?        00:00:29 /usr/lib/jvm/java-11-openjdk-amd64/bin/java -Xmx1024M -Dfile.encoding=US-ASCII -Duser.country=US -Duser.language=en -Duser.variant -cp /root/.gradle/wrapper/dists/gradle-4.9-bin/e9cinqnqvph59rr7g70qubb4t/gradle-4.9/lib/gradle-launcher-4.9.jar org.gradle.launcher.daemon.bootstrap.GradleDaemon 4.9
+root      4053     1  0 15:09 ?        00:00:00 /bin/sh -c java -jar /mxnet-model-server/mms/frontend/model-server.jar
+root      4055  4053  4 15:09 ?        00:00:30 java -jar /mxnet-model-server/mms/frontend/model-server.jar
+root      4830  4055 45 15:12 ?        00:03:32 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9018 --sock-type unix
+root      4849  4055 45 15:12 ?        00:03:31 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9019 --sock-type unix
+root      4876  4055 45 15:12 ?        00:03:31 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9020 --sock-type unix
+root      4903  4055 46 15:12 ?        00:03:33 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9021 --sock-type unix
+root      4930  4055 46 15:12 ?        00:03:32 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9022 --sock-type unix
+root      4957  4055 46 15:12 ?        00:03:32 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9023 --sock-type unix
+root      4984  4055 46 15:12 ?        00:03:31 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9024 --sock-type unix
+root      5011  4055 46 15:12 ?        00:03:31 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9025 --sock-type unix
+root      5038  4055 46 15:12 ?        00:03:31 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9026 --sock-type unix
+root      5065  4055 46 15:12 ?        00:03:33 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9027 --sock-type unix
+root      5092  4055 46 15:12 ?        00:03:33 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9028 --sock-type unix
+root      5119  4055 46 15:12 ?        00:03:31 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9029 --sock-type unix
+root      5146  4055 46 15:12 ?        00:03:32 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9030 --sock-type unix
+root      5173  4055 46 15:12 ?        00:03:32 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9031 --sock-type unix
+root      5200  4055 46 15:12 ?        00:03:31 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9032 --sock-type unix
+root      5227  4055 46 15:12 ?        00:03:32 python mms/model_service_worker.py --sock-name /tmp/.mms.worker.9033 --sock-type unix
+root      5554     1  0 15:20 ?        00:00:00 ps -ef

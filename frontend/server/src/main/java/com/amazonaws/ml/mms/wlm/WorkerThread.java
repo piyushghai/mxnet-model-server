@@ -51,7 +51,7 @@ public class WorkerThread extends Thread {
     static final long WORKER_TIMEOUT = 2L;
     static final StringDecoder STRING_DECODER = new StringDecoder();
     //static final MessageDecoder MSG_DECODER = new MessageDecoder();
-    static final MessageEncoder MSG_ENCODER = new MessageEncoder();
+    final MessageEncoder MSG_ENCODER = new MessageEncoder();
 
     private ConfigManager configManager;
     private EventLoopGroup backendEventGroup;

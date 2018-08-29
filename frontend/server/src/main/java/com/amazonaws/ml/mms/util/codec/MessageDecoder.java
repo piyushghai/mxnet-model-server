@@ -23,10 +23,12 @@ import org.slf4j.LoggerFactory;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 
 public class MessageDecoder extends ByteToMessageDecoder {
-    private final Logger logger = LoggerFactory.getLogger(MessageDecoder.class);
+    //    private final Logger logger = LoggerFactory.getLogger(MessageDecoder.class);
     @Override
     protected void decode(ChannelHandlerContext ctx, ByteBuf in, List<Object> out) throws Exception {
         if (in.getByte(in.readableBytes() - 1) == '\n') {
@@ -71,7 +73,7 @@ public class MessageDecoder extends ByteToMessageDecoder {
             // read the delimiter bytes
             in.readBytes(in.readableBytes());
             out.add(response);
-            logger.info("Decode took " + (System.nanoTime() - startTime) + " ns");
+	    //            logger.info("Decode took " + (System.nanoTime() - startTime) + " ns");
         }
     }
 }

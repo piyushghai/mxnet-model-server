@@ -431,6 +431,7 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
 
     private static RequestBatch parseRequest(FullHttpRequest req) {
         RequestBatch inputData = new RequestBatch();
+	long startTime = System.nanoTime();
         CharSequence contentType = HttpUtil.getMimeType(req);
         if (contentType != null) {
             inputData.setContentType(contentType.toString());
@@ -453,6 +454,7 @@ public class HttpRequestHandler extends SimpleChannelInboundHandler<FullHttpRequ
         } else {
             inputData.addModelInput(new ModelInputs("body", NettyUtils.getBytes(req.content())));
         }
+	//	logger.info("Java HTTP parse data took " + (System.nanoTime() - startTime) + " ns");
         return inputData;
     }
 }

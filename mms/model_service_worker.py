@@ -18,6 +18,7 @@ Communication message format: JSON message
 import socket
 import os
 import json
+import time
 from builtins import bytes
 from builtins import str
 import time
@@ -76,29 +77,6 @@ class MXNetModelServiceWorker(object):
         except Exception as e:  # pylint: disable=broad-except
             raise MMSError(err.UNKNOWN_EXCEPTION, "{}".format(repr(e)))
 
-    def create_predict_response(self, ret, req_id_map, invalid_reqs):
-        """
-        Response object is as follows :
-        RESPONSE =
-        {
-            "code": val,
-            "message": "Success"
-            "predictions": [ PREDICTION_RESULTS ]
-        }
-
-        PREDICTION_RESULTS = {
-            "requestId": 111-222-3333,
-            "code": "Success/Fail" # TODO: Add this
-            "value": Abefz23=,
-        }
-
-        :param ret:
-        :param req_id_map:
-        :param invalid_reqs:
-        :return:
-        """
-    pass
-
     @staticmethod
     def recv_msg(client_sock):
         """
@@ -108,8 +86,11 @@ class MXNetModelServiceWorker(object):
         """
         data = b''
         try:
+            recvStart = 0 
             while True:
                 pkt = client_sock.recv(1024)
+                if recvStart == 0:
+                    recvStart = time.time()
                 if not pkt:
                     exit(1)
 
@@ -120,6 +101,8 @@ class MXNetModelServiceWorker(object):
                 # need to buffer the rest.
                 if data[-2:] == b'\r\n':
                     break
+#            print("BE recv {}".format((time.time() - recvStart) * 1000))
+            
         except (IOError, OSError) as sock_err:
             raise MMSError(err.RECEIVE_ERROR, "{}".format(repr(sock_err)))
         except ValueError as v:
@@ -230,20 +213,24 @@ class MXNetModelServiceWorker(object):
             model_service = loaded_services[model_name]
             req_batch = data[u'requestBatch']
             batch_size = len(req_batch)  # num-inputs gives the batch size
+            startTime = time.time()
             input_batch, req_id_map, invalid_reqs = self.retrieve_data_for_inference(req_batch)
+#            print("Retrieve Inf Msg {} ms".format((time.time() - startTime) * 1000))
             if batch_size == 1:
                 # Initialize metrics at service level
                 model_service.metrics_init(model_name, req_id_map)
                 startTime = time.time()
                 retval.append(model_service.inference([input_batch[0][i] for i in input_batch[0]]))
-                print("MS {} ms".format((time.time() - startTime) * 1000))
+#                print("MS {} ms".format((time.time() - startTime) * 1000))
                 # Dump metrics
-                emit_metrics(model_service.metrics_store.store)
+#                emit_metrics(model_service.metrics_store.store)
             else:
                 raise MMSError(err.UNSUPPORTED_PREDICT_OPERATION, "Invalid batch size {}".format(batch_size))
+            presp_start = time.time()
 
             # TODO: Change the command hardcode
             msg = self.codec.create_response(cmd=2, resp=retval, req_id_map=req_id_map, invalid_reqs=invalid_reqs)
+#            print("Create predict response {}".format((time.time() - presp_start) * 1000))
 
         except ValueError as v:
             raise MMSError(err.INVALID_PREDICT_MESSAGE, "{}".format(repr(v)))
@@ -328,7 +315,11 @@ class MXNetModelServiceWorker(object):
             raise ValueError("Invalid parameter passed to stop server connection")
         try:
             resp = {'code': 200, 'response': "Stopped server"}
-            self.send_response(sock, json.dumps(resp).encode('utf-8'))
+            startTime = time.time()
+            rsp_data = json.dumps(resp).encode('utf-8')
+#            print("json BE encode {} ms".format((time.time() - startTime) * 1000))
+            self.send_response(sock, rsp_data)
+            
             sock.close()
             # os.unlink(self.sock_name)
         except Exception as e:  # pylint: disable=broad-except
@@ -354,7 +345,9 @@ class MXNetModelServiceWorker(object):
     def create_and_send_response(self, sock, c, message, p=None):
         try:
             resp = bytearray()
+            startTime = time.time()
             resp += self.codec.create_response(cmd=3, code=c, message=message, predictions=p)
+#            print("json BE encode {} ms".format((time.time() - startTime) * 1000))
             self.send_response(sock, resp)
         except Exception as ex:
             log_error("{}".format(ex))
@@ -383,7 +376,7 @@ class MXNetModelServiceWorker(object):
                 elif cmd.lower() == u'predict':
                     predictStart = time.time()
                     predictions, result, code = self.predict(msg)
-                    print("PT {}".format(time.time() - predictStart))
+#                    print("PT {}".format(time.time() - predictStart))
                 elif cmd.lower() == u'load':
                     result, code = self.load_model(msg)
                 elif cmd.lower() == u'unload':
@@ -393,7 +386,7 @@ class MXNetModelServiceWorker(object):
                     code = err.UNKNOWN_COMMAND
 
                 self.create_and_send_response(cl_socket, code, result, predictions)
-                print("TT {}: {} ms".format(cmd, time.time() - startTime))
+#                print("TT {}: {} ms".format(cmd, time.time() - startTime))
             except MMSError as m:
                 log_error("MMSError {} data {}".format(cmd, m.get_message()))
                 if m.get_code() == err.SEND_FAILS_EXCEEDS_LIMITS:
@@ -450,8 +443,10 @@ def emit_metrics(metrics):
     A dictionary of all metrics, when key is metric_name
     value is a metric object
     """
-
+    startTimeMetrics = time.time()
     log_msg("[METRICS]", json.dumps(metrics, separators=(',', ':'), cls=MetricEncoder))
+    print("********************* MET ************   {} ms".format((time.time() - startTimeMetrics) * 1000))
+    sys.stdout.flush()
 
 
 if __name__ == "__main__":

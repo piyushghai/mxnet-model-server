@@ -12,7 +12,7 @@ Utils class to have all encode and decode helper functions for the backend worke
 """
 import base64
 import binascii
-
+import time
 from mms.mxnet_model_service_error import MMSError
 from mms.utils.model_server_error_codes import ModelServerErrorCodes as err
 
@@ -25,7 +25,10 @@ class ModelWorkerCodecHelper(object):
     def decode_msg(encoding, msg):
         try:
             if encoding == u'base64':
-                return base64.b64decode(msg)
+                startTime = time.time()
+                data = base64.b64decode(msg)
+                print("base64 DEcode {} ms".format((time.time() - startTime) * 1000))
+                return data
 
             return msg
         except (binascii.Error, TypeError) as e:
@@ -42,7 +45,9 @@ class ModelWorkerCodecHelper(object):
         """
         try:
             if encoding == u'base64':
+                startTime = time.time()
                 val = base64.b64encode(msg).decode('utf-8')
+                print("base64 ENcode {} ms".format((time.time() - startTime) * 1000))
             else:
                 raise TypeError("Invalid encoding type given. {}".format(encoding))
 

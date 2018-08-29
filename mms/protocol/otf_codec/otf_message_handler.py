@@ -45,7 +45,7 @@ class OtfCodecHandler:
         if gpu_id > 0:
             msg['gpu'] = gpu_id
 
-        print("Time taken to retrieve load message is {} ms".format((time.time() - startTime) * 1000))
+#        print("Time taken to retrieve load message is {} ms".format((time.time() - startTime) * 1000))
         sys.stdout.flush()
         return "load", msg
 
@@ -74,14 +74,15 @@ class OtfCodecHandler:
             offset += int_size
 
             if length > 0:
-                if ("contentType" in model_input and "json" in model_input['contentType'].lower()) or \
-                   ("json" in content_type.lower()):
+                if ("contentType" in model_input and "application" in model_input['contentType'].lower()) or \
+                   ("application" in content_type.lower()):
                     model_input['value'] = struct.unpack('!{}s'.format(length), data[offset:offset+length])[0].decode()
                 elif ("contentType" in model_input and "jpeg" in model_input['contentType'].lower()) or \
                      ("jpeg" in content_type.lower()):
                     model_input['value'] = data[offset: offset+length]
                 else:
-                    raise MMSError(ModelServerErrorCodes.UNKNOWN_CONTENT_TYPE, "Unknown contentType given for the data")
+                    model_input['value'] = struct.unpack('!{}s'.format(length), data[offset:offset+length])[0].decode()
+#                    raise MMSError(ModelServerErrorCodes.UNKNOWN_CONTENT_TYPE, "Unknown contentType given for the data")
                 offset += length
             msg.append(model_input)
         return offset
@@ -132,7 +133,7 @@ class OtfCodecHandler:
             msg['requestBatch'] = list()
             self.__retrieve_request_batch(data[offset:], msg['requestBatch'])
 
-        print("Time taken to retrieve inference message is {} ms".format((time.time() - startTime) * 1000))
+#        print("Time taken to retrieve inference message is {} ms".format((time.time() - startTime) * 1000))
         sys.stdout.flush()
         return "predict", msg
 
@@ -202,7 +203,7 @@ class OtfCodecHandler:
                 msg += struct.pack('!{}s'.format(len(encoding)), encoding.encode())
             msg += struct.pack('!i', -2) # End of list
 
-            print("Time taken for encoding response is {} ms".format((time.time() - startTime) * 1000))
+#            print("Time taken for encoding response is {} ms".format((time.time() - startTime) * 1000))
             sys.stdout.flush()
             return msg
 
@@ -224,7 +225,7 @@ class OtfCodecHandler:
             else:
                 msg += struct.pack('!i', 0)  # no predictions
             msg += bytes("\r\n".encode())
-            print("Time taken to encode general response is {} ms".format((time.time() - startTime) * 1000))
+#            print("Time taken to encode general response is {} ms".format((time.time() - startTime) * 1000))
             sys.stdout.flush()
         except Exception:
             raise

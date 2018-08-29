@@ -143,7 +143,7 @@ class SingleNodeService(ModelService):
             self.metrics_store.add_time(PREPROCESS_METRIC, pre_time_in_ms)
             self.metrics_store.add_time(INFERENCE_METRIC, infer_time_in_ms)
             self.metrics_store.add_time(POSTPROCESS_METRIC, post_time_in_ms)
-
+#            print("pre {} ms, inf {} ms, post {}ms".format(pre_time_in_ms, infer_time_in_ms, post_time_in_ms))
         except MMSError as m:
             m.set_code(err.CUSTOM_SERVICE_ERROR)
             raise m

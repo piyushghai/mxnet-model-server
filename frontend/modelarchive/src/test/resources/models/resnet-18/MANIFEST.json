@@ -1,0 +1,18 @@
+{
+    "Engine": {
+        "MXNet": 0.12
+    }, 
+    "Model-Archive-Description": "Resnet18", 
+    "License": "Apache 2.0", 
+    "Model-Archive-Version": 0.1, 
+    "Model-Server": 0.1, 
+    "Model": {
+        "Description": "Resnet18", 
+        "Service": "mxnet_vision_service.py", 
+        "Symbol": "resnet-18-symbol.json", 
+        "Parameters": "resnet-18-0000.params", 
+        "Signature": "signature.json", 
+        "Model-Name": "resnet-18", 
+        "Model-Format": "MXNet-Symbolic"
+    }
+}
